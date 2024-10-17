@@ -45,6 +45,6 @@ To get started with the project:
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/robotic-printer.git
-   cd robotic-printer
+   git clone https://github.com/fholman/RoboticPrinter
+   cd RoboticPrinter
 
