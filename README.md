@@ -47,4 +47,3 @@ To get started with the project:
    ```bash
    git clone https://github.com/fholman/RoboticPrinter
    cd RoboticPrinter
-
