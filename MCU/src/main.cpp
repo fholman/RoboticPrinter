@@ -1,18 +1,29 @@
 #include "main_declarations.h"
 
-// put function declarations here:
-int myFunction(int, int);
-
 void setup() {
   // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  BluetoothSerial.begin(460800);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  check_bluetooth();
 }
 
 // put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+int read_bluetooth(char c) {
+  while (c != 3) {
+    if (BluetoothSerial.available()) {
+      char c = BluetoothSerial.read();
+    }
+  }
+}
+
+void check_bluetooth() {
+  if (BluetoothSerial.available()) {
+    char c = BluetoothSerial.read();
+    if (c == 2) {
+      read_bluetooth(c);
+    }
+  }
 }
