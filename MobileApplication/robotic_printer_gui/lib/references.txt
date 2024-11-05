@@ -1,0 +1,8 @@
+Flutter Tutorial:
+https://codelabs.developers.google.com/codelabs/flutter-codelab-first#0
+
+Motion Tab Bar Library:
+https://pub.dev/packages/motion_tab_bar
+
+Settings UI Library:
+https://pub.dev/documentation/settings_ui/latest/
