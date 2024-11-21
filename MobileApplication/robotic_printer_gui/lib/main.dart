@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:motion_tab_bar/MotionBadgeWidget.dart';
 import 'package:motion_tab_bar/MotionTabBar.dart';
 import 'package:motion_tab_bar/MotionTabBarController.dart';
 import 'package:settings_ui/settings_ui.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:image/image.dart' as img;
+import 'package:permission_handler/permission_handler.dart';
 
 void main() => runApp(const MyApp());
 
@@ -158,6 +160,11 @@ class MainPageContentComponent extends StatefulWidget {
 class _MainPageContentComponentState extends State<MainPageContentComponent> {
 
   File? image;
+  File? displayedImage;
+  int? widthtext;
+  int? heighttext;
+  int pagewidth = 796;
+  int pageheight = 1123;
 
   Future pickImage() async {
     try {
@@ -166,10 +173,70 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
       if (image == null) return;
 
       final imageTemp = File(image.path);
+      
+      final originalImage = img.decodeImage(imageTemp.readAsBytesSync());
 
-      setState(() => this.image = imageTemp);
+      if (originalImage != null) {
+
+        img.Image rescaledImage = img.copyResize(originalImage, width:200);
+
+        rescaledImage = img.grayscale(rescaledImage);
+
+        final directory = await Directory.systemTemp.createTemp(); // Temp directory
+        final processedImagePath = '${directory.path}/processed_image.png';
+        File(processedImagePath).writeAsBytesSync(img.encodePng(rescaledImage));
+        setState(() => this.displayedImage = File(processedImagePath));
+
+        final ogdirectory = await Directory.systemTemp.createTemp(); // Temp directory
+        final ogprocessedImagePath = '${ogdirectory.path}/processed_image.png';
+        File(ogprocessedImagePath).writeAsBytesSync(img.encodePng(originalImage));
+        setState(() => this.image = File(ogprocessedImagePath));
+
+        setState(() => this.widthtext = rescaledImage.width);
+        setState(() => this.heighttext = rescaledImage.height);
+
+      }
+
     } on PlatformException catch(e) {
       print('Failed to pick image: $e');
+    }
+  }
+
+  Future rescaleImage(File? im, bool up) async {
+    if (widthtext == null) return null;
+    if (heighttext == null) return null;
+
+    if (widthtext! < pagewidth && heighttext! < pageheight) {
+
+      if (im == null) return null;
+      try {
+        final bytes = await im.readAsBytes();
+        final originalImage = img.decodeImage(bytes);
+
+        if (originalImage == null) return null;
+
+        img.Image rescaledImage = img.copyResize(originalImage, width:widthtext, height:heighttext);
+
+        if (up) {
+          rescaledImage = img.copyResize(originalImage, width:rescaledImage.width + 50);
+        }
+        else {
+          rescaledImage = img.copyResize(originalImage, width:rescaledImage.width - 50);
+        }
+
+        rescaledImage = img.grayscale(rescaledImage);
+
+        final directory = await Directory.systemTemp.createTemp(); // Temp directory
+        final processedImagePath = '${directory.path}/processed_image.png';
+        File(processedImagePath).writeAsBytesSync(img.encodePng(rescaledImage));
+
+        setState(() => this.displayedImage = File(processedImagePath));
+        setState(() => this.widthtext = rescaledImage.width);
+        setState(() => this.heighttext = rescaledImage.height);
+
+      } on PlatformException catch(e) {
+        print('Failed to pick image: $e');
+      }
     }
   }
 
@@ -179,38 +246,60 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
       child: Column(
         //mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // const SizedBox(height: 50),
+          // Text(widget.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 50),
-          Text(widget.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 50),
-          //const Text('Go to "X" page programmatically'),
-          const SizedBox(height: 10),
-          IconButton(
-            icon: Icon(Icons.image),
-            //onPressed: () => controller.index = 0,
-            //child: const Text('Upload Image'),
-            onPressed: () {
-              pickImage();
-              // Navigator.push(
-              //   context,
-              //   MaterialPageRoute(builder: (context) => const UploadImagePage()),
-              // );
-            }
-          ),
-          IconButton(
-            icon: Icon(Icons.file_download),
+          ElevatedButton(
+            //  callback function that gets called when the user presses the button
+
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const UploadImagePage()),
+                MaterialPageRoute(builder: (context) => BluetoothPage()),
               );
+            },
+            
+            // Text to be displayed on the button
+            child: Text("Connect to Printer"),
+          ),
+          const SizedBox(height: 50),
+          IconButton(
+            icon: Icon(Icons.image),
+            onPressed: () {
+              pickImage();
             }
           ),
-          // ElevatedButton(
-          //   onPressed: () => controller.index = 1,
-          //   child: const Text('Upload File'),
-          // ),
           SizedBox(height: 20,),
-          image != null ? Image.file(image!): Text("No Image Selecetd")
+          displayedImage != null ? Image.file(displayedImage!): Text("No Image Selected"),
+          SizedBox(height: 20,),
+
+          widthtext != null ? Text(this.widthtext.toString() + " x " + this.heighttext.toString()): Text(""),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  //image != null ? rescaleImage(image) : null;
+                  rescaleImage(image, true);
+                },
+                child: Text("Increase Size"),
+              ),
+
+              ElevatedButton(
+                onPressed: () {
+                  //image != null ? rescaleImage(image) : null;
+                  rescaleImage(image, false);
+                },
+                child: Text("Decrease Size"),
+              ),
+            ],
+          ),
+
+          const ElevatedButton(
+            onPressed: null,
+            child: Text("Print"),
+          ),
         ],
       ),
     );
@@ -264,23 +353,92 @@ class SettingsPageContentComponent extends StatelessWidget {
   }
 }
 
-class UploadImagePage extends StatelessWidget {
-  const UploadImagePage({super.key});
+class BluetoothPage extends StatefulWidget {
+  @override
+  _BleScannerState createState() => _BleScannerState();
+}
+
+class _BleScannerState extends State<BluetoothPage> {
+  FlutterBluePlus flutterBlue = FlutterBluePlus();
+  List<BluetoothDevice> devices = [];  // List to store the discovered devices
+  bool isScanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  void startScanning() async {
+    PermissionStatus status = await Permission.location.request();
+    if (!status.isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Location permission is required to scan for devices')),
+      );
+      return;
+    }
+
+    if (!isScanning) {
+      setState(() {
+        isScanning = true;
+        devices.clear();  // Clear previous devices
+      });
+
+      FlutterBluePlus.startScan(timeout: Duration(seconds: 10));
+
+      FlutterBluePlus.scanResults.listen((results) {
+        for (ScanResult result in results) {
+          if (!devices.contains(result.device)) {
+            setState(() {
+              devices.add(result.device);  // Add new device to list
+            });
+          }
+        }
+      });
+
+      // Stop scanning after the timeout
+      FlutterBluePlus.stopScan();
+      setState(() {
+        isScanning = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        //title: const Text('Second Route'),
+        title: Text('BLE Device Scanner'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search),
+            onPressed: startScanning,
+          ),
+        ],
       ),
-      // body: Center(
-      //   child: ElevatedButton(
-      //     onPressed: () {
-      //       Navigator.pop(context);
-      //     },
-      //     child: const Text('Go back!'),
-      //   ),
-      //),
+      body: isScanning
+          ? Center(child: CircularProgressIndicator())  // Show progress while scanning
+          : ListView.builder(
+              itemCount: devices.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(devices[index].name.isEmpty
+                      ? "Unnamed Device"
+                      : devices[index].name),
+                  subtitle: Text(devices[index].id.toString()),
+                  onTap: () {
+                    // You can handle tap to connect or show more info about the device
+                  },
+                );
+              },
+            ),
     );
   }
+
+  @override
+  void dispose() {
+    super.dispose();
+    FlutterBluePlus.stopScan();  // Stop scanning when the widget is disposed
+  }
 }
+
+

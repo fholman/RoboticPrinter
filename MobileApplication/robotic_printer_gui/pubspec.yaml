@@ -17,6 +17,11 @@ dependencies:
   motion_tab_bar: ^2.0.4
   settings_ui: ^2.0.2
   image_picker: ^0.8.3
+  wifi_iot: ^0.3.19
+  http: ^1.2.2
+  flutter_blue_plus: ^1.34.4
+  image: ^4.3.0
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

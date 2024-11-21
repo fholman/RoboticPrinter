@@ -7,17 +7,28 @@ plugins {
 
 android {
     namespace = "com.example.robotic_printer_gui"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    //compileSdk = flutter.compileSdkVersion
+    //ndkVersion = flutter.ndkVersion
+
+    compileSdk 35
+    ndkVersion "25.1.8937393"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-
+    // compileOptions {
+    //     sourceCompatibility JavaVersion.VERSION_23
+    //     targetCompatibility JavaVersion.VERSION_23
+    // }
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        //jvmTarget = 17
+        jvmTarget = "1.8"
     }
+
+    // kotlinOptions {
+    //     jvmTarget = JavaVersion.VERSION_1_8
+    // }
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
@@ -42,3 +53,10 @@ android {
 flutter {
     source = "../.."
 }
+
+// java {
+//     toolchain {
+//         languageVersion = JavaLanguageVersion.of(18) // Or the version you prefer
+//     }
+// }
+
