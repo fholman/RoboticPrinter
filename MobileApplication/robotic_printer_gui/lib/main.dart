@@ -5,9 +5,10 @@ import 'package:settings_ui/settings_ui.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_blue/flutter_blue.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() => runApp(const MyApp());
 
@@ -165,6 +166,7 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
   int? heighttext;
   int pagewidth = 796;
   int pageheight = 1123;
+  ScanResult? targetDevice;
 
   Future pickImage() async {
     try {
@@ -203,12 +205,22 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
   }
 
   Future rescaleImage(File? im, bool up) async {
+    if (im == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          "No Image Selected",
+          textAlign: TextAlign.right,
+        ),
+        duration: Duration(seconds: 3), // Show for 3 seconds
+        backgroundColor: Colors.red,
+      ));
+      return null;
+    }
+
     if (widthtext == null) return null;
     if (heighttext == null) return null;
 
     if (widthtext! < pagewidth && heighttext! < pageheight) {
-
-      if (im == null) return null;
       try {
         final bytes = await im.readAsBytes();
         final originalImage = img.decodeImage(bytes);
@@ -240,40 +252,337 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
     }
   }
 
+  Future<void> connectPrinter() async {
+    PermissionStatus status = await Permission.location.request();
+    List<ScanResult> scanResults = [];
+    FlutterBlue flutterBlue = FlutterBlue.instance;
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        "Connecting to Printer",
+        textAlign: TextAlign.right,
+      ),
+      duration: Duration(seconds: 3), // Show for 3 seconds
+      backgroundColor: Colors.blue,
+    ));
+
+    if (!status.isGranted) {
+      return;
+    }
+
+    try {
+      scanResults = await flutterBlue.startScan(
+        scanMode: ScanMode.lowLatency,
+        allowDuplicates: false,
+        timeout: Duration(seconds: 4)
+      ) as List<ScanResult>; // Ensure the type matches
+    } catch (e) {
+      print("Error while scanning: $e");
+    }
+
+    // Now `scanResults` is correctly populated with a `List<ScanResult>`
+    print(scanResults);
+
+    ScanResult targetDevice;
+    bool fndDevice = false;
+
+    for (ScanResult scanResult in scanResults) {
+      if (scanResult.device.name == 'RoboPrinter') {
+        targetDevice = scanResult;
+        setState(() => this.targetDevice = scanResult);
+        await targetDevice.device.connect();
+        print('Connected to ${targetDevice.device.name}');
+        fndDevice = true;
+
+        try {
+          await targetDevice.device.requestMtu(255);
+          print('MTU set to 255');
+        } catch (e) {
+          print('Failed to set MTU: $e');
+        }
+
+        break;
+      }
+    }
+
+    if (!fndDevice) {
+      print('Device RoboPrinter not found');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          "Could not Connect to Printer",
+          textAlign: TextAlign.right,
+        ),
+        duration: Duration(seconds: 3), // Show for 3 seconds
+        backgroundColor: Colors.red,
+      ));
+    }
+
+    flutterBlue.stopScan();
+  }
+
+  Future<void> disconnectPrinter() async {
+    if (targetDevice != null) {
+      await targetDevice!.device.disconnect();
+      print('Disconnected from ${targetDevice!.device.name}');
+      setState(() => this.targetDevice = null);
+    }
+    else {
+      print("No Device Connected!");
+    }
+  }
+
+  Future<Uint8List> blackAndWhite() async {
+    List<int> imageBytes = await displayedImage!.readAsBytes();
+
+    img.Image? image = img.decodeImage(Uint8List.fromList(imageBytes));
+
+    if (image == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          "Image Error",
+          textAlign: TextAlign.right,
+        ),
+        duration: Duration(seconds: 3), // Show for 3 seconds
+        backgroundColor: Colors.red,
+      ));
+      throw Exception('Failed to decode image.');
+    }
+
+    //print(len(image));
+
+    // img.Pixel pixel = image.getPixel(0, 0);
+    // print(pixel[0]);
+    // print(pixel[1]);
+    // print(pixel[2]);
+    // print(pixel);
+
+    List<int> byteArray = [];
+
+    // white = 1
+    // black = 0
+    int threshold = 128;
+    int pixelCounter = 0;
+    int numOfPixels = image.height * image.width;
+
+    for (int y = 0; y < image.height; y++) {
+      for (int x = 0; x < image.width; x++) {
+        img.Pixel pixel = image.getPixel(x, y);
+        pixelCounter += pixel[0].toInt();
+      }
+    }
+
+    threshold = (pixelCounter / numOfPixels).toInt();
+
+    print(threshold);
+
+    int width = (image.width + 7) ~/ 8;
+    int lowByte = width & 0xFF;        // Extract the least significant byte
+    int highByte = (width >> 8) & 0xFF; // Extract the most significant byte
+    byteArray.add(highByte);
+    byteArray.add(lowByte);
+
+    print(highByte);
+    print(lowByte);
+
+    for (int y = 0; y < image.height; y++) {
+      int byte = 0;
+      for (int x = 0; x < image.width; x++) {
+        img.Pixel pixel = image.getPixel(x, y);
+        int color = pixel[0].toInt();
+        byte = byte << 1;  // Shift the bits to the left
+        if (color < threshold) {
+          byte |= 1;  // If the pixel is black, set the last bit to 1
+        }
+
+        // Every 8 pixels, push the byte into the byte array
+        if ((x + 1) % 8 == 0) {
+          byteArray.add(byte);
+          //print(byte.toRadixString(2).padLeft(8, '0'));
+          byte = 0;  // Reset the byte for the next 8 pixels
+        }
+        else {
+          if (x == image.width - 1) {
+            byte = byte << 8 - (image.width % 8);
+            byteArray.add(byte);
+            //print(byte.toRadixString(2).padLeft(8, '0'));
+          }
+        }
+      }
+    }
+
+    int byteArraySize = (byteArray.length-2);
+
+    List<int> sizeBytes = [
+      (byteArraySize >> 24) & 0xFF,  // Most significant byte
+      (byteArraySize >> 16) & 0xFF,
+      (byteArraySize >> 8) & 0xFF,
+      byteArraySize & 0xFF           // Least significant byte
+    ];
+
+    // Prepend the size bytes to the byteArray
+    byteArray.insertAll(0, sizeBytes);
+
+    // print(byteArray.length);
+    // print(byteArray);
+
+    // int chunkSize = 200;
+
+    // for (int i = 0; i < byteArray.length; i += chunkSize) {
+    //   // Get the next chunk of size 'chunkSize', but ensure we don't go past the end of the list
+    //   int end = (i + chunkSize < byteArray.length) ? i + chunkSize : byteArray.length;
+    //   List<int> chunk = byteArray.sublist(i, end);
+      
+    //   // Print the chunk
+    //   print('Chunk starting at index $i: $chunk');
+    // }
+
+    // Return the byte array
+    return Uint8List.fromList(byteArray);
+  }
+
+  Future<void> printImage() async {
+    if (targetDevice == null) {
+      print('No printer connected!');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          "Not Connected to Printer",
+          textAlign: TextAlign.right,
+        ),
+        duration: Duration(seconds: 3), // Show for 3 seconds
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    if (image == null) {
+      print("No Image Selected!");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          "No Image Selected",
+          textAlign: TextAlign.right,
+        ),
+        duration: Duration(seconds: 3), // Show for 3 seconds
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    try {
+      BluetoothCharacteristic? targChar;
+
+      final serviceUUID = Guid("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+      final characteristicUUID = Guid("beb5483e-36e1-4688-b7f5-ea07361b26a8");
+
+      List<BluetoothService> services = await targetDevice!.device.discoverServices();
+
+      Uint8List byteArray = await blackAndWhite();
+
+      for (BluetoothService service in services) {
+        if (service.uuid == serviceUUID) {
+          var characteristics = service.characteristics;
+          for(BluetoothCharacteristic c in characteristics) {
+            if (c.uuid == characteristicUUID) {
+              targChar = c;
+              print("Found Target Characteristic");
+              break;
+            }
+          }
+        }
+        if (targChar != null) break;
+      }
+
+      if (targChar == null) {
+        print("Target Characteristic Not Found");
+        return;
+      }
+
+      // print(byteArray[0]);
+      // print(byteArray[1]);
+      // print(byteArray[2]);
+      // print(byteArray[3]);
+      // print(byteArray[4]);
+      // print(byteArray[5]);
+      // print(byteArray.sublist(0, 5));
+
+      await targChar.write(byteArray.sublist(0, 4), withoutResponse: true);
+      await Future.delayed(Duration(milliseconds: 50));
+
+      await targChar.write(byteArray.sublist(4, 6), withoutResponse: true);
+      await Future.delayed(Duration(milliseconds: 50));
+
+      int chunkSize = 250;
+
+      for (int i = 6; i < byteArray.length; i += chunkSize) {
+        // Get the next chunk of size 'chunkSize', but ensure we don't go past the end of the list
+        int end = (i + chunkSize < byteArray.length) ? i + chunkSize : byteArray.length;
+        List<int> chunk = byteArray.sublist(i, end);
+        
+        // Print the chunk
+        print('Chunk starting at index $i: $chunk');
+
+        await targChar.write(chunk, withoutResponse: true);
+        await Future.delayed(Duration(milliseconds: 50));
+      }
+
+    }
+    catch (e) {
+      print("Error");
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Column(
         //mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // const SizedBox(height: 50),
-          // Text(widget.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 50),
-          ElevatedButton(
-            //  callback function that gets called when the user presses the button
+          const SizedBox(height: 20),
 
+          Container(
+              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),  // Add padding for text inside the box
+              decoration: BoxDecoration(
+                color: targetDevice != null ? Colors.green : Colors.red,  // Green when connected, red when not
+                borderRadius: BorderRadius.circular(10),  // Rounded corners
+              ),
+              child: Text(
+                targetDevice != null ? "Connected to Printer" : "Not Connected to Printer",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,  // Text color will be white for contrast
+                ),
+              ),
+            ),
+
+          //Text(targetDevice != null ? "Connected to Printer" : "Not Connected to Printer", 
+          //style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+
+          const SizedBox(height: 20),
+
+          ElevatedButton(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => BluetoothPage()),
-              );
+              //image != null ? rescaleImage(image) : null;
+              if (targetDevice == null) {
+                connectPrinter();
+              }
+              else {
+                disconnectPrinter();
+              }
             },
-            
-            // Text to be displayed on the button
-            child: Text("Connect to Printer"),
+            child: Text(targetDevice == null ? "Connect" : "Disconnect"),
           ),
-          const SizedBox(height: 50),
+
+          const SizedBox(height: 20),
+
           IconButton(
             icon: Icon(Icons.image),
             onPressed: () {
               pickImage();
             }
           ),
-          SizedBox(height: 20,),
-          displayedImage != null ? Image.file(displayedImage!): Text("No Image Selected"),
-          SizedBox(height: 20,),
 
-          widthtext != null ? Text(this.widthtext.toString() + " x " + this.heighttext.toString()): Text(""),
+          SizedBox(height: 20),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -286,6 +595,8 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
                 child: Text("Increase Size"),
               ),
 
+              SizedBox(width: 20),
+
               ElevatedButton(
                 onPressed: () {
                   //image != null ? rescaleImage(image) : null;
@@ -296,9 +607,37 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
             ],
           ),
 
-          const ElevatedButton(
-            onPressed: null,
-            child: Text("Print"),
+          IconButton(
+            icon: Icon(Icons.print),
+            //onPressed: null,
+            onPressed: () {
+              printImage();
+            },
+            //child: Text("Print"),
+          ),
+
+          SizedBox(height: 20),
+          
+          displayedImage != null ? Image.file(displayedImage!): Text("No Image Selected"),
+
+          widthtext != null ? Text(this.widthtext.toString() + " x " + this.heighttext.toString()): Text(""),
+
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: null,
+                child: Text("Start Printing"),
+              ),
+
+              SizedBox(width: 20),
+
+              ElevatedButton(
+                onPressed: null,
+                child: Text("Stop Printing"),
+              ),
+            ],
           ),
         ],
       ),
@@ -346,6 +685,16 @@ class SettingsPageContentComponent extends StatelessWidget {
                 leading: Icon(Icons.format_paint),
                 title: Text('Enable custom theme'),
               ),
+              SettingsTile.navigation(
+                leading: Icon(Icons.bug_report),
+                title: Text('Debug Terminal'),
+                onPressed: (context) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => DebugPage()),
+                  );
+                },
+              ),
           ],)
         ],
       ),
@@ -353,92 +702,20 @@ class SettingsPageContentComponent extends StatelessWidget {
   }
 }
 
-class BluetoothPage extends StatefulWidget {
+class DebugPage extends StatefulWidget {
   @override
-  _BleScannerState createState() => _BleScannerState();
+  _DebugPageState createState() => _DebugPageState();
 }
 
-class _BleScannerState extends State<BluetoothPage> {
-  FlutterBluePlus flutterBlue = FlutterBluePlus();
-  List<BluetoothDevice> devices = [];  // List to store the discovered devices
-  bool isScanning = false;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  void startScanning() async {
-    PermissionStatus status = await Permission.location.request();
-    if (!status.isGranted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Location permission is required to scan for devices')),
-      );
-      return;
-    }
-
-    if (!isScanning) {
-      setState(() {
-        isScanning = true;
-        devices.clear();  // Clear previous devices
-      });
-
-      FlutterBluePlus.startScan(timeout: Duration(seconds: 10));
-
-      FlutterBluePlus.scanResults.listen((results) {
-        for (ScanResult result in results) {
-          if (!devices.contains(result.device)) {
-            setState(() {
-              devices.add(result.device);  // Add new device to list
-            });
-          }
-        }
-      });
-
-      // Stop scanning after the timeout
-      FlutterBluePlus.stopScan();
-      setState(() {
-        isScanning = false;
-      });
-    }
-  }
-
-  @override
+class _DebugPageState extends State<DebugPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('BLE Device Scanner'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search),
-            onPressed: startScanning,
-          ),
-        ],
+        title: Text('Debug Terminal'),
       ),
-      body: isScanning
-          ? Center(child: CircularProgressIndicator())  // Show progress while scanning
-          : ListView.builder(
-              itemCount: devices.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(devices[index].name.isEmpty
-                      ? "Unnamed Device"
-                      : devices[index].name),
-                  subtitle: Text(devices[index].id.toString()),
-                  onTap: () {
-                    // You can handle tap to connect or show more info about the device
-                  },
-                );
-              },
-            ),
+      body: Center(
+        child: Text('Welcome to the New Page!'),
+      ),
     );
   }
-
-  @override
-  void dispose() {
-    super.dispose();
-    FlutterBluePlus.stopScan();  // Stop scanning when the widget is disposed
-  }
 }
-
-

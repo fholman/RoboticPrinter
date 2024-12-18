@@ -261,6 +261,7 @@ void processSDFile() {
               makeDot(lines[row + 1], dotPause);
             }
           }
+          
         }
       }
 

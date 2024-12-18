@@ -8,6 +8,7 @@
  
 void setup() {
   // Sets the two pins as Outputs
+  //Serial.begin(9600);
   pinMode(stepPin,OUTPUT); 
   pinMode(dirPin,OUTPUT);
 
@@ -15,18 +16,19 @@ void setup() {
   pinMode(MS2,OUTPUT);
   pinMode(MS3,OUTPUT);
 
-  digitalWrite(MS1,HIGH);
+  digitalWrite(MS1,LOW);
   digitalWrite(MS2,LOW);
   digitalWrite(MS3,LOW);
   digitalWrite(dirPin,HIGH); 
 }
 void loop() {// Enables the motor to move in a particular direction
   // Makes 200 pulses for making one full cycle rotation
+  //Serial.println("Going");
   for(int x = 0; x < 10; x++) {
     digitalWrite(stepPin,HIGH); 
     delayMicroseconds(700);    // by changing this time delay between the steps we can change the rotation speed
     digitalWrite(stepPin,LOW); 
-    delay(200); 
+    delay(20); 
   }
   //delay(1000); // One second delay
   
