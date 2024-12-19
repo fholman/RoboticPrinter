@@ -38,7 +38,7 @@ This project focuses on the development of a multifunctional portable printer ro
   - Stepper motor to control positioning
 - **Software**: 
   - Android app (built using Flutter and VSCode)
-  - MCU main program (STM32 board using platformIO on VSCode)
+  - MCU main program (ESP32 board using ArduinoIDE)
 
 ## Getting Started
 To get started with the project:
