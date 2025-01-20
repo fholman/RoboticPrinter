@@ -9,6 +9,11 @@ import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'package:path_provider/path_provider.dart';
+import 'dart:async';
+import 'bluetooth_service.dart'; 
+
+ValueNotifier<List<String>> entriesNotifier = ValueNotifier<List<String>>([]);
+ValueNotifier<bool> isDevice = ValueNotifier<bool>(false);
 
 void main() => runApp(const MyApp());
 
@@ -166,7 +171,16 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
   int? heighttext;
   int pagewidth = 796;
   int pageheight = 1123;
-  ScanResult? targetDevice;
+  ScanResult? targetDevice;// = TheBluetoothService().getDevice();
+  StreamSubscription? subscription;
+
+  void initState() {
+    super.initState();
+
+    TheBluetoothService b = new TheBluetoothService();
+
+    b.checkPermissions();
+  }
 
   Future pickImage() async {
     try {
@@ -253,71 +267,91 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
   }
 
   Future<void> connectPrinter() async {
-    PermissionStatus status = await Permission.location.request();
-    List<ScanResult> scanResults = [];
-    FlutterBlue flutterBlue = FlutterBlue.instance;
+    // handle permissions first
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-        "Connecting to Printer",
-        textAlign: TextAlign.right,
-      ),
-      duration: Duration(seconds: 3), // Show for 3 seconds
-      backgroundColor: Colors.blue,
-    ));
+    if (
+      await Permission.location.request().isGranted &&
+      await Permission.bluetoothScan.request().isGranted &&
+      await Permission.bluetoothConnect.request().isGranted &&
+      //await Permission.bluetooth.request().isGranted &&
+      await Permission.bluetoothAdvertise.request().isGranted
+    ) {
 
-    if (!status.isGranted) {
-      return;
-    }
+      List<ScanResult> scanResults = [];
+      FlutterBlue flutterBlue = FlutterBlue.instance;
 
-    try {
-      scanResults = await flutterBlue.startScan(
-        scanMode: ScanMode.lowLatency,
-        allowDuplicates: false,
-        timeout: Duration(seconds: 4)
-      ) as List<ScanResult>; // Ensure the type matches
-    } catch (e) {
-      print("Error while scanning: $e");
-    }
-
-    // Now `scanResults` is correctly populated with a `List<ScanResult>`
-    print(scanResults);
-
-    ScanResult targetDevice;
-    bool fndDevice = false;
-
-    for (ScanResult scanResult in scanResults) {
-      if (scanResult.device.name == 'RoboPrinter') {
-        targetDevice = scanResult;
-        setState(() => this.targetDevice = scanResult);
-        await targetDevice.device.connect();
-        print('Connected to ${targetDevice.device.name}');
-        fndDevice = true;
-
-        try {
-          await targetDevice.device.requestMtu(255);
-          print('MTU set to 255');
-        } catch (e) {
-          print('Failed to set MTU: $e');
-        }
-
-        break;
-      }
-    }
-
-    if (!fndDevice) {
-      print('Device RoboPrinter not found');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
-          "Could not Connect to Printer",
+          "Connecting to Printer",
           textAlign: TextAlign.right,
         ),
         duration: Duration(seconds: 3), // Show for 3 seconds
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.blue,
       ));
+
+      try {
+        scanResults = await flutterBlue.startScan(
+          scanMode: ScanMode.lowLatency,
+          allowDuplicates: false,
+          timeout: Duration(seconds: 4)
+        ) as List<ScanResult>; // Ensure the type matches
+      } catch (e) {
+        print("Error while scanning: $e");
+      }
+
+      // Now `scanResults` is correctly populated with a `List<ScanResult>`
+      //print(scanResults);
+
+      ScanResult targetDevice;
+      bool fndDevice = false;
+
+      for (ScanResult scanResult in scanResults) {
+        if (scanResult.device.name == 'RoboPrinter') {
+          targetDevice = scanResult;
+          TheBluetoothService().setDevice(scanResult);
+          setState(() => this.targetDevice = scanResult);
+          await targetDevice.device.connect();
+          await Future.delayed(Duration(seconds: 2));
+          print('Connected to ${targetDevice.device.name}');
+          fndDevice = true;
+
+          try {
+            await targetDevice.device.requestMtu(255);
+            print('MTU set to 255');
+          } catch (e) {
+            print('Failed to set MTU: $e');
+          }
+
+          charListener();
+          break;
+        }
+      }
+
+      if (!fndDevice) {
+        print('Device RoboPrinter not found');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+            "Could not Connect to Printer",
+            textAlign: TextAlign.right,
+          ),
+          duration: Duration(seconds: 3), // Show for 3 seconds
+          backgroundColor: Colors.red,
+        ));
+      }
+
+      flutterBlue.stopScan();
     }
 
-    flutterBlue.stopScan();
+    else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+            "Do not have the necessary permissions",
+            textAlign: TextAlign.right,
+          ),
+          duration: Duration(seconds: 3), // Show for 3 seconds
+          backgroundColor: Colors.red,
+        ));
+    }
   }
 
   Future<void> disconnectPrinter() async {
@@ -325,10 +359,12 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
       await targetDevice!.device.disconnect();
       print('Disconnected from ${targetDevice!.device.name}');
       setState(() => this.targetDevice = null);
+      TheBluetoothService().setDevice(null);
     }
     else {
       print("No Device Connected!");
     }
+    subscription?.cancel();
   }
 
   Future<Uint8List> blackAndWhite() async {
@@ -347,14 +383,6 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
       ));
       throw Exception('Failed to decode image.');
     }
-
-    //print(len(image));
-
-    // img.Pixel pixel = image.getPixel(0, 0);
-    // print(pixel[0]);
-    // print(pixel[1]);
-    // print(pixel[2]);
-    // print(pixel);
 
     List<int> byteArray = [];
 
@@ -422,21 +450,6 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
     // Prepend the size bytes to the byteArray
     byteArray.insertAll(0, sizeBytes);
 
-    // print(byteArray.length);
-    // print(byteArray);
-
-    // int chunkSize = 200;
-
-    // for (int i = 0; i < byteArray.length; i += chunkSize) {
-    //   // Get the next chunk of size 'chunkSize', but ensure we don't go past the end of the list
-    //   int end = (i + chunkSize < byteArray.length) ? i + chunkSize : byteArray.length;
-    //   List<int> chunk = byteArray.sublist(i, end);
-      
-    //   // Print the chunk
-    //   print('Chunk starting at index $i: $chunk');
-    // }
-
-    // Return the byte array
     return Uint8List.fromList(byteArray);
   }
 
@@ -528,6 +541,54 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
     catch (e) {
       print("Error");
     }
+  }
+
+  Future<void> charListener() async {
+    BluetoothCharacteristic? targChar;
+
+    final serviceUUID = Guid("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+    final characteristicUUID2 = Guid("64f90866-d4bb-493d-bd01-e532e4e34021");
+
+    List<BluetoothService> services = await targetDevice!.device.discoverServices();
+
+    for (BluetoothService service in services) {
+      if (service.uuid == serviceUUID) {
+        var characteristics = service.characteristics;
+        for(BluetoothCharacteristic c in characteristics) {
+          if (c.uuid == characteristicUUID2) {
+            await c.setNotifyValue(true);
+            targChar = c;
+            print("Found Target Characteristic");
+            try {
+              // Listen for changes to the characteristic value
+              subscription = c.value.listen(
+                (value) {
+                  DateTime now = DateTime.now();
+                  String message = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} - ${String.fromCharCodes(value)}";
+                  entriesNotifier.value = [message] + List.from(entriesNotifier.value);
+                  print(message);  // Convert byte data to string
+                },
+                onError: (error) {
+                  print("Error: $error");  // Handle error
+                },
+              );
+            } catch (e) {
+              print("Error setting notify value: $e");
+            }
+
+            break;
+          }
+        }
+      }
+      if (targChar != null) break;
+    }
+
+    if (targChar == null) {
+      print("Target Characteristic Not Found");
+      return;
+    }
+
+    
   }
 
 
@@ -708,13 +769,28 @@ class DebugPage extends StatefulWidget {
 }
 
 class _DebugPageState extends State<DebugPage> {
+
+   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Debug Terminal'),
       ),
-      body: Center(
-        child: Text('Welcome to the New Page!'),
+      body: ValueListenableBuilder<List<String>>(
+        valueListenable: entriesNotifier,
+        builder: (context, entries, child) {
+          return ListView.separated(
+            padding: const EdgeInsets.all(8),
+            itemCount: entries.length,
+            itemBuilder: (BuildContext context, int index) {
+              return Container(
+                height: 50,
+                child: Text(entries[index]),
+              );
+            },
+            separatorBuilder: (BuildContext context, int index) => const Divider(),
+          );
+        },
       ),
     );
   }
