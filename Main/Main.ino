@@ -2,6 +2,11 @@
 #include <SPI.h>
 #include <SD.h>
 
+#include "BluetoothControl.h"
+#include "FileControl.h"
+#include "MotorControl.h"
+#include "PrintheadControl.h"
+
 // port assignment
 #define bluetooth_RX PB_11
 #define bluetooth_TX PB_10
@@ -21,21 +26,10 @@ HardwareSerial BluetoothSerial(bluetooth_RX, bluetooth_TX);
 #define NOZZLE_11 
 #define NOZZLE_12 
 
-#define stepPin1 2
-#define dirPin1 3
-#define stepPin2 5
-#define dirPin2 4
-#define stepPin3 7
-#define dirPin3 6
-#define stepPin4 9
-#define dirPin4 8
-
 TaskHandle_t Task_Main;
 TaskHandle_t Task_Status;
 
-int nozzles[] = {NOZZLE_06, NOZZLE_07, NOZZLE_08, NOZZLE_09, NOZZLE_12, NOZZLE_11, NOZZLE_10, NOZZLE_03, NOZZLE_02, NOZZLE_01, NOZZLE_04, NOZZLE_05};
-
-int dotPause = ;      //Needs filled !!!
+int nozzles[12] = {NOZZLE_01, NOZZLE_02, NOZZLE_03, NOZZLE_04, NOZZLE_05, NOZZLE_06, NOZZLE_07, NOZZLE_08, NOZZLE_09, NOZZLE_10, NOZZLE_11, NOZZLE_12};      
 
 File myFile;
 
@@ -45,7 +39,6 @@ int miso = 5;
 int mosi = 6;
 int cs = 7;
 
-
 void setup() {
   
   Serial.begin(115200);
@@ -54,7 +47,7 @@ void setup() {
   }
 
   Serial.print("\nInitializing SD card...");
-  if (!SD.begin(CS Pin Number)) { //Needs changed <------
+  if (!SD.begin(cs)) {
     Serial.println("initialization failed!");
     while (1);
   }
@@ -63,8 +56,9 @@ void setup() {
 
   BluetoothSerial.begin(460800);
 
-  for(i=0; i<12; i++){
+  for(int i = 0; i < 12; i++){
     pinMode(nozzles[i], OUTPUT);
+    digitalWrite(nozzles[i], LOW);
   }
 
   pinMode(stepPin1,OUTPUT); 
@@ -81,8 +75,8 @@ void setup() {
   digitalWrite(dirPin3,HIGH); 
   digitalWrite(dirPin4,LOW); 
 
-  xTaskCreate(MainFunctions, "Main", 100, NULL, 1, &Task_Main);
-  xTaskCreate(BluetoothStatus, "Status", 100, NULL, 2, &Task_Status);
+  xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
+  xTaskCreate(BluetoothStatus, "Status", 2048, NULL, 2, &Task_Status);
 }
 
 
