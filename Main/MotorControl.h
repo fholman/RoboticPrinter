@@ -12,7 +12,7 @@
 #define stepPin4 9
 #define dirPin4 8
 
-void horizontalMove();
-void verticleMove();
+void horizontalMove(int horizontalSteps);
+void verticleMove(int verticleSteps);
 
 #endif

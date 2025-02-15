@@ -10,7 +10,9 @@ void processSDFile() {
   // Buffer to hold file lines
   String lines[12];
   int lineCount = 0;
-  int dotPause = 0.003;
+  int dotPause = 6;
+  int horizontalSteps = 700;
+  int verticleSteps = 700;
 
   Serial.println("Processing FileName.txt:");
 
@@ -33,7 +35,7 @@ void processSDFile() {
               makeDot(lines[row + 1], dotPause);
             }
           }
-          horizontalMove();
+          horizontalMove(int horizontalSteps);
         }
       } else {
         // Read column by column from the last to the first
@@ -44,10 +46,10 @@ void processSDFile() {
               makeDot(lines[row + 1], dotPause);
             }
           }
-          horizontalMove();
+          horizontalMove(int horizontalSteps);
         }
       }
-      verticleMove();
+      verticleMove(int verticleSteps);
 
       // Alternate direction
       forward = !forward;
