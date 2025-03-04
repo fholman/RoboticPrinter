@@ -3,6 +3,7 @@
 #include <SD.h>
 #include <TMC2208Stepper.h>
 #include <Arduino_FreeRTOS.h>
+#include <math.h>
 
 #include "BluetoothControl.h"
 #include "FileControl.h"
@@ -40,6 +41,22 @@ const int dotPauseLong = 2000;
 
 const int chipSelect = 53;
 File dataFile;
+
+const float WHEELDIAMETER = 35;
+const float WHEELCIRCUMFERENCE = M_PI * WHEELDIAMETER;
+
+const float HORIZONTALRATIO = 150;
+const float VERTICALRATIO = 150;
+
+const float MOTORSTEP = 18;
+
+const float HORIZONTALMOTORDISTANCE = WHEELCIRCUMFERENCE * ( (MOTORSTEP / HORIZONTALRATIO) / 360 );
+const float VERTICALMOTORDISTANCE = WHEELCIRCUMFERENCE * ( (MOTORSTEP / VERTICALRATIO) / 360 );
+
+const float PIXELWIDTH = 3.125 / 12;
+
+const int HORIZONTALNUMSTEPS = round(PIXELWIDTH / HORIZONTALMOTORDISTANCE);
+const int VERTICALNUMSTEPS = round(PIXELWIDTH / VERTICALMOTORDISTANCE);
 
 void setup() {
   
