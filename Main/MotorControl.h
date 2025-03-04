@@ -2,17 +2,17 @@
 #define MOTORCONTROL_H
 
 #include <Arduino.h>
+#include <TMC2208Stepper.h>
 
-#define stepPin1 2
-#define dirPin1 3
-#define stepPin2 5
-#define dirPin2 4
-#define stepPin3 7
-#define dirPin3 6
-#define stepPin4 9
-#define dirPin4 8
+extern const int stepPin1;
+extern const int stepPin2;
+extern const int stepPin3;
+extern const int stepPin4;
 
-void horizontalMove(int horizontalSteps);
-void verticleMove(int verticleSteps);
+extern TMC2208Stepper driver;
+extern TMC2208Stepper driver2;
+
+void horizontalMove();
+void verticleMove();
 
 #endif

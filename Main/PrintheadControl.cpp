@@ -1,9 +1,9 @@
 #include "PrintheadControl.h"
 
-void makeDot(int nozzle, long dotPause){
-  digitalWrite(nozzles[nozzle], HIGH);
+void makeDot(uint8_t nozzle){
+  digitalWrite(nozzlePins[nozzle], HIGH);
   delayMicroseconds(dotPause);
-  digitalWrite(nozzles[nozzle], LOW);
+  digitalWrite(nozzlePins[nozzle], LOW);
   Serial.println("Nozzle " + String(nozzle) + " Activated");
-  delay(1000);
+  delayMicroseconds(dotPauseLong);
 }

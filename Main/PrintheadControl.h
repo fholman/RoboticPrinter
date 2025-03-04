@@ -3,8 +3,11 @@
 
 #include <Arduino.h>
 
-extern int nozzles[12];
+extern const uint8_t nozzlePins[12];
 
-void makeDot(int nozzle, long dotPause);
+extern const uint8_t dotPause;
+extern const int dotPauseLong;
+
+void makeDot(uint8_t nozzle);
 
 #endif

@@ -1,43 +1,45 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <SD.h>
+#include <TMC2208Stepper.h>
+#include <Arduino_FreeRTOS.h>
 
 #include "BluetoothControl.h"
 #include "FileControl.h"
 #include "MotorControl.h"
 #include "PrintheadControl.h"
 
+#define RX_PIN 0
+#define TX_PIN 1
+#define RX1_PIN 19
+#define TX1_PIN 18
+
+#define Current 250
+#define MicroStep 8
+
+TMC2208Stepper driver = TMC2208Stepper(RX_PIN, TX_PIN);
+TMC2208Stepper driver2 = TMC2208Stepper(RX1_PIN, TX1_PIN);
+
 // port assignment
 #define bluetooth_RX PB_11
 #define bluetooth_TX PB_10
 HardwareSerial BluetoothSerial(bluetooth_RX, bluetooth_TX);
 
-//Needs pin assignment
-#define NOZZLE_01 
-#define NOZZLE_02 
-#define NOZZLE_03 
-#define NOZZLE_04 
-#define NOZZLE_05 
-#define NOZZLE_06 
-#define NOZZLE_07 
-#define NOZZLE_08 
-#define NOZZLE_09 
-#define NOZZLE_10 
-#define NOZZLE_11 
-#define NOZZLE_12 
+// TaskHandle_t Task_Main;
+// TaskHandle_t Task_Status;
 
-TaskHandle_t Task_Main;
-TaskHandle_t Task_Status;
+const uint8_t nozzlePins[12] = {30, 28, 22, 24, 26, 35, 36, 37, 34, 33, 32, 31};
 
-int nozzles[12] = {NOZZLE_01, NOZZLE_02, NOZZLE_03, NOZZLE_04, NOZZLE_05, NOZZLE_06, NOZZLE_07, NOZZLE_08, NOZZLE_09, NOZZLE_10, NOZZLE_11, NOZZLE_12};      
+const int stepPin1 = 3;
+const int stepPin2 = 4;
+const int stepPin3 = 5;
+const int stepPin4 = 6;
 
-File myFile;
+const uint8_t dotPause = 5;
+const int dotPauseLong = 2000;
 
-//Sd Card
-int sck = 4;
-int miso = 5;
-int mosi = 6;
-int cs = 7;
+const int chipSelect = 53;
+File dataFile;
 
 void setup() {
   
@@ -46,48 +48,63 @@ void setup() {
     ;
   }
 
-  Serial.print("\nInitializing SD card...");
-  if (!SD.begin(cs)) {
-    Serial.println("initialization failed!");
-    while (1);
-  }
-  Serial.println("initialization done.");
+  driver.beginSerial(115200);  
+  driver2.beginSerial(115200); 
+  driver.push();
+  driver2.push(); 
 
+  Serial.print("\nInitialising SD card...");
+  if (!SD.begin(chipSelect)) {
+    Serial.println("initialization failed!");
+    while(true);
+  }
+  Serial.println("\ninitialisation done.");
 
   BluetoothSerial.begin(460800);
 
   for(int i = 0; i < 12; i++){
-    pinMode(nozzles[i], OUTPUT);
-    digitalWrite(nozzles[i], LOW);
+    pinMode(nozzlePins[i], OUTPUT);
+    digitalWrite(nozzlePins[i], LOW);
   }
 
   pinMode(stepPin1,OUTPUT); 
-  pinMode(dirPin1,OUTPUT);
   pinMode(stepPin2,OUTPUT); 
-  pinMode(dirPin2,OUTPUT);
   pinMode(stepPin3,OUTPUT); 
-  pinMode(dirPin3,OUTPUT);
   pinMode(stepPin4,OUTPUT); 
-  pinMode(dirPin4,OUTPUT);
 
-  digitalWrite(dirPin1,HIGH); 
-  digitalWrite(dirPin2,LOW); 
-  digitalWrite(dirPin3,HIGH); 
-  digitalWrite(dirPin4,LOW); 
+  driver.pdn_disable(true);              // Use PDN/UART pin for communication
+  driver.I_scale_analog(false);           // Adjust current from the registers
+  driver.rms_current(Current);        // Set driver current 
+  driver.toff(5);                     
+  driver.shaft(true);
+  driver.en_spreadCycle(1);           // 1: spreadCycle 0: stealthChop
+  driver.pwm_autoscale(0);            // 1: if stealthChop is chosen. Otherwise 0
+  driver.mstep_reg_select(1);
+  driver.mres(MicroStep);
 
-  xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
-  xTaskCreate(BluetoothStatus, "Status", 2048, NULL, 2, &Task_Status);
+  driver2.pdn_disable(true);              // Use PDN/UART pin for communication
+  driver2.I_scale_analog(false);           // Adjust current from the registers
+  driver2.rms_current(Current);        // Set driver current 
+  driver2.toff(5);                     
+  driver2.shaft(true);
+  driver2.en_spreadCycle(1);           // 1: spreadCycle 0: stealthChop
+  driver2.pwm_autoscale(0);            // 1: if stealthChop is chosen. Otherwise 0
+  driver2.mstep_reg_select(1);
+  driver2.mres(MicroStep);
+
+  // xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
+  // xTaskCreate(BluetoothStatus, "Status", 2048, NULL, 1, &Task_Status);
 }
 
 
 void loop() {
-
+  processSDFile();
 }
 
-void MainFunctions(void *param) {
+// void MainFunctions(void *param) {
 
-  (void) param;
+//   (void) param;
 
-  // Call functions to begin
-  
-}
+//   // Call functions to begin
+//   processSDFile();
+// }
