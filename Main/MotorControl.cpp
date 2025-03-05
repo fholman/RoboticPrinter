@@ -6,7 +6,7 @@ void horizontalMove() {
   Serial.println("Motor horizontal move");
   driver2.toff(5);
 
-  for(int x = 0; x < HORIZONTALNUMSTEPS; x++) {
+  for(int x = 0; x < 14; x++) {
     digitalWrite(stepPin3,HIGH); 
     digitalWrite(stepPin4,HIGH); 
     delayMicroseconds(1000);    // by changing this time delay between the steps we can change the rotation speed
@@ -21,7 +21,7 @@ void verticleMove() {
   Serial.println("Motor verticle move");
   driver.toff(5);
 
-  for(int x = 0; x < VERTICALNUMSTEPS; x++) {
+  for(int x = 0; x < 96; x++) {
     digitalWrite(stepPin1,HIGH); 
     digitalWrite(stepPin2,HIGH);
     delayMicroseconds(1000);    // by changing this time delay between the steps we can change the rotation speed

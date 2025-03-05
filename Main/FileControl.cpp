@@ -1,9 +1,10 @@
 #include "FileControl.h"
 
 // // Grid and other code below swap between for testing without SD card
-// const int rows = 27;
-// const int cols = 15;
-// const char grid[rows][cols + 1] = {
+const int rows = 36;
+const int cols = 22;
+int rowIndex = 0;
+const char grid[rows][cols + 1]; // = {
 //   "110000010110010",
 //   "101110100100101",
 //   "101011110100011",
@@ -46,16 +47,16 @@ void processSDFile() {
   // //Code to assign all lines in file to matching grid size
   File dataFile = SD.open("gridData.txt");
 
-  // while (dataFile.available() && rowIndex < rows) {
-  //   String line = dataFile.readStringUntil('\n');
-  //   line.trim();
+  while (dataFile.available() && rowIndex < rows) {
+    String line = dataFile.readStringUntil('\n');
+    line.trim();
 
-  //   if (line.length() == cols) {
-  //     line.toCharArray(grid[rowIndex], cols + 1);
-  //     rowIndex++;
-  //   }
-  // }
-  // dataFile.close();
+    if (line.length() == cols) {
+      line.toCharArray(grid[rowIndex], cols + 1);
+      rowIndex++;
+    }
+  }
+  dataFile.close();
 
   // File dataFile = SD.open("gridData.txt");
   // if (!dataFile) {
@@ -63,18 +64,18 @@ void processSDFile() {
   //   return;
   // }
 
-  // for (int i = 0; i < rows; i++) {
+  for (int i = 0; i < rows; i++) {
     
-  //   lines[lineCount++] = grid[i];
+    lines[lineCount++] = grid[i];
 
   // Read the file line by line
-  while (dataFile.available()) {
-    String currentLine = dataFile.readStringUntil('\n');
-    lines[lineCount++] = currentLine;
+  // while (dataFile.available()) {
+  //   String currentLine = dataFile.readStringUntil('\n');
+  //   lines[lineCount++] = currentLine;
 
     // If we've collected 12 lines or reached the end of the file
-    if (lineCount == 12 || !dataFile.available()) {
-    // if (lineCount == 12 || i == rows - 1) { 
+    // if (lineCount == 12 || !dataFile.available()) {
+    if (lineCount == 12 || i == rows - 1) { 
 
       if (forward) {
         driver2.shaft(true);
@@ -83,7 +84,7 @@ void processSDFile() {
           for (int row = 0; row < lineCount; row++) {
             if (col < lines[row].length() && lines[row][col] == '1') {
               Serial.println("1 found in col " + String(col + 1) + " and row " + String(row + 1));
-              makeDot(lines[row + 1][col] - '0');
+              makeDot(row);
             }
           }
           horizontalMove();
@@ -95,7 +96,7 @@ void processSDFile() {
           for (int row = lineCount - 1; row >= 0; row--) {
             if (col < lines[row].length() && lines[row][col] == '1') {
               Serial.println("1 found in col " + String(col + 1) + " and row " + String(row + 1));
-              makeDot(lines[row + 1][col] - '0');
+              makeDot(row);
             }
           }
           horizontalMove();

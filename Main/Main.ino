@@ -3,7 +3,6 @@
 #include <SD.h>
 #include <TMC2208Stepper.h>
 #include <Arduino_FreeRTOS.h>
-#include <math.h>
 
 #include "BluetoothControl.h"
 #include "FileControl.h"
@@ -22,9 +21,9 @@ TMC2208Stepper driver = TMC2208Stepper(RX_PIN, TX_PIN);
 TMC2208Stepper driver2 = TMC2208Stepper(RX1_PIN, TX1_PIN);
 
 // port assignment
-#define bluetooth_RX PB_11
-#define bluetooth_TX PB_10
-HardwareSerial BluetoothSerial(bluetooth_RX, bluetooth_TX);
+// #define bluetooth_RX PB_11
+// #define bluetooth_TX PB_10
+// HardwareSerial BluetoothSerial(bluetooth_RX, bluetooth_TX);
 
 // TaskHandle_t Task_Main;
 // TaskHandle_t Task_Status;
@@ -41,22 +40,6 @@ const int dotPauseLong = 2000;
 
 const int chipSelect = 53;
 File dataFile;
-
-const float WHEELDIAMETER = 35;
-const float WHEELCIRCUMFERENCE = M_PI * WHEELDIAMETER;
-
-const float HORIZONTALRATIO = 150;
-const float VERTICALRATIO = 150;   // ONE NEEDS TO BE 298
-
-const float MOTORSTEP = 18;
-
-const float HORIZONTALMOTORDISTANCE = WHEELCIRCUMFERENCE * ( (MOTORSTEP / HORIZONTALRATIO) / 360 );
-const float VERTICALMOTORDISTANCE = WHEELCIRCUMFERENCE * ( (MOTORSTEP / VERTICALRATIO) / 360 );
-
-const float PIXELWIDTH = 3.125 / 12;
-
-const int HORIZONTALNUMSTEPS = round(PIXELWIDTH / HORIZONTALMOTORDISTANCE);
-const int VERTICALNUMSTEPS = (round(PIXELWIDTH / VERTICALMOTORDISTANCE))*12;
 
 void setup() {
   
@@ -77,7 +60,7 @@ void setup() {
   }
   Serial.println("\ninitialisation done.");
 
-  BluetoothSerial.begin(460800);
+  // BluetoothSerial.begin(460800);
 
   for(int i = 0; i < 12; i++){
     pinMode(nozzlePins[i], OUTPUT);
@@ -111,11 +94,12 @@ void setup() {
 
   // xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
   // xTaskCreate(BluetoothStatus, "Status", 2048, NULL, 1, &Task_Status);
+  processSDFile();
 }
 
 
 void loop() {
-  processSDFile();
+  
 }
 
 // void MainFunctions(void *param) {
@@ -125,3 +109,4 @@ void loop() {
 //   // Call functions to begin
 //   processSDFile();
 // }
+
