@@ -35,7 +35,7 @@ void Task1(void *parameter) {
       pCharacteristic2->notify();
       Serial.println("Setting Value2");
     }
-    vTaskDelay(2000 / portTICK_PERIOD_MS); // Delay for 1 second
+    vTaskDelay(2000 / portTICK_PERIOD_MS); // Delay for 2 second
   }
 }
 
@@ -159,7 +159,6 @@ void setup() {
     &Task2Handle            // Task handle
   );
 
-  vTaskStartScheduler();
 }
 
 void loop() {

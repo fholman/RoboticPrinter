@@ -41,7 +41,7 @@ class TheBluetoothService {
     }
   }
 
-  void startScanningAndConnect() {
+  Future<void> startScanningAndConnect() async {
     FlutterBlue flutterBlue = FlutterBlue.instance;
 
     Future<void> scanAndConnect() async {
@@ -72,8 +72,8 @@ class TheBluetoothService {
 
               connectedDevice = r; // Store the connected device
               isConnected.value = true;
-              debugListener();
-              statusListener();
+              await debugListener();
+              await statusListener();
               return; // Exit the function upon successful connection
             } catch (connectionError) {
               print('Connection failed: $connectionError');
@@ -86,13 +86,15 @@ class TheBluetoothService {
         print('Target device not found, restarting scan...');
         isConnected.value = false;
         await flutterBlue.stopScan(); // Stop the current scan
-        await Future.delayed(Duration(seconds: 1)); // Optional delay before restarting
-        await scanAndConnect(); // Recursively call the function to scan again
+        await Future.delayed(Duration(seconds: 5)); // Optional delay before restarting
+        //await scanAndConnect(); // Recursively call the function to scan again
         return; // Ensure proper exit after the recursive call
       }
     }
 
-    scanAndConnect(); // Start the scanning process
+    while (connectedDevice == null) {
+      await scanAndConnect(); // Start the scanning process
+    }
   }
 
   Future<void> statusListener() async {

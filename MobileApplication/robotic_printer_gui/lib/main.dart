@@ -15,6 +15,12 @@ import 'bluetooth_service.dart';
 ValueNotifier<List<String>> entriesNotifier = ValueNotifier<List<String>>([]);
 ValueNotifier<bool> isDevice = ValueNotifier<bool>(false);
 
+Color col1 = Color(0xFFF7C59F);
+Color col2 = Color(0xFF2A324B);
+Color col3 = Color(0xFF767B91);
+Color col4 = Color(0xFFC7CCDB);
+Color col5 = Color(0xFFE1E5EE);
+
 void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
@@ -24,9 +30,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'PRINTBOT LABS',
+      //title: 'PRINTBOT LABS',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        //primarySwatch: Colors.blue,
+        primaryColor: col1,
       ),
       home: const MyHomePage(title: 'PRINTBOT LABS'),
     );
@@ -73,10 +80,11 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title!),
-        backgroundColor: Color.fromARGB(255, 33, 150, 243),
-      ),
+      // appBar: AppBar(
+      //   title: Text(widget.title!),
+      //   //backgroundColor: Color.fromARGB(255, 33, 150, 243),
+      //   backgroundColor: col1,
+      // ),
       bottomNavigationBar: MotionTabBar(
         controller: _motionTabBarController, // Add this controller if you need to change your tab programmatically
         initialSelectedTab: "Print",
@@ -448,14 +456,14 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
                     color: isConnected ? Colors.green : Colors.red, // Green when connected, red when not
                     borderRadius: BorderRadius.circular(5), // Rounded corners
                   ),
-                  child: Text(
-                    isConnected ? "Connected to Printer" : "Not Connected to Printer",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white, // Text color will be white for contrast
-                    ),
-                  ),
+                  // child: Text(
+                  //   isConnected ? "Connected to Printer" : "Not Connected to Printer",
+                  //   style: TextStyle(
+                  //     fontSize: 20,
+                  //     fontWeight: FontWeight.bold,
+                  //     color: Colors.white, // Text color will be white for contrast
+                  //   ),
+                  // ),
                 );
               },
             ),
