@@ -1,10 +1,10 @@
 #include "FileControl.h"
 
 // // Grid and other code below swap between for testing without SD card
-const int rows = 36;
-const int cols = 22;
+const int rows = 27;
+const int cols = 15;    //REMEMBER TO CHANGE !!
 int rowIndex = 0;
-const char grid[rows][cols + 1]; // = {
+const char grid[rows][cols + 1]; // = { or ;
 //   "110000010110010",
 //   "101110100100101",
 //   "101011110100011",
@@ -42,11 +42,15 @@ void processSDFile() {
   int lineCount = 0;
   static bool forward = true;
 
+  File dataFile = SD.open("gridData.txt");
+  if (!dataFile) {
+    Serial.println("Error opening grid file!");
+    return;
+  }
+
   Serial.println("Processing dataFile.txt:");
 
-  // //Code to assign all lines in file to matching grid size
-  File dataFile = SD.open("gridData.txt");
-
+  //Code to assign all lines in file to matching grid size
   while (dataFile.available() && rowIndex < rows) {
     String line = dataFile.readStringUntil('\n');
     line.trim();
@@ -57,12 +61,6 @@ void processSDFile() {
     }
   }
   dataFile.close();
-
-  // File dataFile = SD.open("gridData.txt");
-  // if (!dataFile) {
-  //   Serial.println("Error opening grid file!");
-  //   return;
-  // }
 
   for (int i = 0; i < rows; i++) {
     
@@ -76,6 +74,7 @@ void processSDFile() {
     // If we've collected 12 lines or reached the end of the file
     // if (lineCount == 12 || !dataFile.available()) {
     if (lineCount == 12 || i == rows - 1) { 
+      driver2.toff(5);
 
       if (forward) {
         driver2.shaft(true);
@@ -84,10 +83,14 @@ void processSDFile() {
           for (int row = 0; row < lineCount; row++) {
             if (col < lines[row].length() && lines[row][col] == '1') {
               Serial.println("1 found in col " + String(col + 1) + " and row " + String(row + 1));
+              vTaskSuspend(Task_Status);
               makeDot(row);
+              vTaskResume(Task_Status);
+              //delay(500);
             }
           }
           horizontalMove();
+          //delay(2000);
         }
       } else {
         driver2.shaft(false);
@@ -96,13 +99,19 @@ void processSDFile() {
           for (int row = lineCount - 1; row >= 0; row--) {
             if (col < lines[row].length() && lines[row][col] == '1') {
               Serial.println("1 found in col " + String(col + 1) + " and row " + String(row + 1));
+              vTaskSuspend(Task_Status);
               makeDot(row);
+              vTaskResume(Task_Status);
+              //delay(500);
             }
           }
           horizontalMove();
+          //delay(2000);
         }
       }
+      driver2.toff(0);
       verticleMove();
+      delay(2000);
 
       // Alternate direction
       forward = !forward;

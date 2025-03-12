@@ -4,7 +4,6 @@
 
 void horizontalMove() {
   Serial.println("Motor horizontal move");
-  driver2.toff(5);
 
   for(int x = 0; x < 14; x++) {
     digitalWrite(stepPin3,HIGH); 
@@ -14,7 +13,6 @@ void horizontalMove() {
     digitalWrite(stepPin4,LOW); 
     delay(25); 
   }
-  driver2.toff(0);
 }
 
 void verticleMove() {

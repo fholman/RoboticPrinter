@@ -12,9 +12,6 @@ extern const int stepPin4;
 extern TMC2208Stepper driver;
 extern TMC2208Stepper driver2;
 
-extern const int HORIZONTALNUMSTEPS;
-extern const int VERTICALNUMSTEPS;
-
 void horizontalMove();
 void verticleMove();
 

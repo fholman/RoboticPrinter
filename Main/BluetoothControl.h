@@ -3,6 +3,4 @@
 
 #include <Arduino.h>
 
-void BluetoothStatus(void *param);
-
 #endif
