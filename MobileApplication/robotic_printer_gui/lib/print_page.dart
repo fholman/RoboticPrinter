@@ -37,7 +37,7 @@ class _PrintPageContentComponentState extends State<PrintPageContentComponent> {
 
   bool isPortrait = true;
 
-  String _selectedText = "A4";
+  String _selectedText = "A5";
 
   @override
   void initState() {
@@ -194,8 +194,10 @@ class _PrintPageContentComponentState extends State<PrintPageContentComponent> {
     int width = (image.width + 7) ~/ 8;
     int lowByte = width & 0xFF;        // Extract the least significant byte
     int highByte = (width >> 8) & 0xFF; // Extract the most significant byte
-    byteArray.add(highByte);
+    byteArray.add(highByte); 
     byteArray.add(lowByte);
+
+    print(image.width);
 
     print(highByte);
     print(lowByte);
@@ -234,6 +236,8 @@ class _PrintPageContentComponentState extends State<PrintPageContentComponent> {
       (byteArraySize >> 8) & 0xFF,
       byteArraySize & 0xFF           // Least significant byte
     ];
+
+    print(sizeBytes);
 
     // Prepend the size bytes to the byteArray
     byteArray.insertAll(0, sizeBytes);
@@ -302,11 +306,22 @@ class _PrintPageContentComponentState extends State<PrintPageContentComponent> {
               return;
             }
 
-            await targChar.write(byteArray.sublist(0, 4), withoutResponse: true);
+            final characteristicUUID2 = Guid("64f90866-d4bb-493d-bd01-e532e4e34021");
+
+            BluetoothCharacteristic? targChar2 = await TheBluetoothService().charFinder(characteristicUUID2);
+
+            if (targChar2 == null) {
+              print("Target Characteristic Not Found");
+              return;
+            }
+
+            print(byteArray.sublist(0, 6));
+            await targChar2.write(byteArray.sublist(0, 6), withoutResponse: true); // this is how many bytes will be received
             await Future.delayed(Duration(milliseconds: 50));
 
-            await targChar.write(byteArray.sublist(4, 6), withoutResponse: true);
-            await Future.delayed(Duration(milliseconds: 50));
+            // print(byteArray.sublist(4, 6));
+            // await targChar.write(byteArray.sublist(4, 6), withoutResponse: true); // width in number of bytes (not pixels!)
+            // await Future.delayed(Duration(milliseconds: 50));
 
             int chunkSize = 395;
 
@@ -319,8 +334,12 @@ class _PrintPageContentComponentState extends State<PrintPageContentComponent> {
               print('Chunk starting at index $i: $chunk');
 
               await targChar.write(chunk, withoutResponse: true);
-              await Future.delayed(Duration(milliseconds: 50));
+              await Future.delayed(Duration(milliseconds: 150));
             }
+
+            print("DONE");
+            await targChar2.write([1], withoutResponse: true); // this is how many bytes will be received
+            await Future.delayed(Duration(milliseconds: 50));
 
             Navigator.push(
               context,

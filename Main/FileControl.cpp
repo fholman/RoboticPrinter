@@ -1,10 +1,10 @@
 #include "FileControl.h"
 
 // // Grid and other code below swap between for testing without SD card
-const int rows = 27;
-const int cols = 15;    //REMEMBER TO CHANGE !!
-int rowIndex = 0;
-const char grid[rows][cols + 1]; // = { or ;
+// const int rows = 27;
+// const int cols = 15;    //REMEMBER TO CHANGE !!
+// int rowIndex = 0;
+// const char grid[rows][cols + 1]; // = { or ;
 //   "110000010110010",
 //   "101110100100101",
 //   "101011110100011",
@@ -17,7 +17,7 @@ const char grid[rows][cols + 1]; // = { or ;
 //   "000101011011110",
 //   "111000011010100",
 //   "001011101010110",
-  
+ 
 //   "011101010001100",
 //   "101011010100011",
 //   "110101101011000",
@@ -30,11 +30,63 @@ const char grid[rows][cols + 1]; // = { or ;
 //   "000010011010000",
 //   "001011101101100",
 //   "101010111011110",
-  
+ 
 //   "000010011010000",
 //   "001011101101100",
 //   "101010111011110"
 // };
+
+void setupSD() {
+  if (!SD.begin()) {
+    Serial.println("Card Mount Failed");
+    while(1);
+  }
+
+  if (SD.cardType() == CARD_NONE) {
+    Serial.println("No SD card attached");
+    while(1);
+  }
+}
+
+void writeFile(const char *path, const char *message) {
+  writeFile(SD, path, message);
+}
+
+void writeFile(fs::FS &fs, const char *path, const char *message) {
+  Serial.printf("Writing file: %s\n", path);
+
+  File file = fs.open(path, FILE_WRITE);
+  if (!file) {
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+  if (file.print(message)) {
+    Serial.println("File written");
+  } else {
+    Serial.println("Write failed");
+  }
+  file.close();
+}
+
+void appendFile(const char *path, const char *message) {
+  appendFile(SD, path, message);
+}
+
+void appendFile(fs::FS &fs, const char *path, const char *message) {
+  Serial.printf("Appending to file: %s\n", path);
+
+  File file = fs.open(path, FILE_APPEND);
+  if (!file) {
+    Serial.println("Failed to open file for appending");
+    return;
+  }
+  if (file.print(message)) {
+    Serial.println("Message appended");
+  } else {
+    Serial.println("Append failed");
+  }
+  file.close();
+}
 
 void processSDFile() {
   // Buffer to hold file lines
@@ -50,21 +102,37 @@ void processSDFile() {
 
   Serial.println("Processing dataFile.txt:");
 
-  //Code to assign all lines in file to matching grid size
-  while (dataFile.available() && rowIndex < rows) {
-    String line = dataFile.readStringUntil('\n');
-    line.trim();
+  // //Code to assign all lines in file to matching grid size
+  // while (dataFile.available() && rowIndex < rows) {
+  //   String line = dataFile.readStringUntil('\n');
+  //   line.trim();
 
-    if (line.length() == cols) {
-      line.toCharArray(grid[rowIndex], cols + 1);
-      rowIndex++;
+  //   if (line.length() == cols) {
+  //     line.toCharArray(grid[rowIndex], cols + 1);
+  //     rowIndex++;
+  //   }
+  // }
+  // dataFile.close();
+
+  portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
+
+  // Read file line by line
+  while (dataFile.available() || lineCount > 0) {
+    if (dataFile.available()) {
+      String line = dataFile.readStringUntil('\n');  // Read one line from the file
+      line.trim();  // Trim any extra spaces or newline characters
+
+      // Skip any empty lines
+      if (line.length() == 0) {
+        continue;
+      }
+
+      lines[lineCount] = line;  // Store the line in the lines buffer
+      lineCount++;
     }
-  }
-  dataFile.close();
-
-  for (int i = 0; i < rows; i++) {
-    
-    lines[lineCount++] = grid[i];
+  // for (int i = 0; i < rows; i++) {
+   
+  //   lines[lineCount++] = grid[i];
 
   // Read the file line by line
   // while (dataFile.available()) {
@@ -73,22 +141,25 @@ void processSDFile() {
 
     // If we've collected 12 lines or reached the end of the file
     // if (lineCount == 12 || !dataFile.available()) {
-    if (lineCount == 12 || i == rows - 1) { 
+    // if (lineCount == 12 || i == rows - 1) {
+    if (lineCount == 12 || !dataFile.available()) {
       driver2.toff(5);
 
       if (forward) {
         driver2.shaft(true);
         // Read column by column from the first to the last
         for (size_t col = 0; col < lines[0].length(); col++) {
+          taskENTER_CRITICAL(&myMutex);
+          vTaskSuspend(Task_Status);
           for (int row = 0; row < lineCount; row++) {
             if (col < lines[row].length() && lines[row][col] == '1') {
               Serial.println("1 found in col " + String(col + 1) + " and row " + String(row + 1));
-              vTaskSuspend(Task_Status);
               makeDot(row);
-              vTaskResume(Task_Status);
               //delay(500);
             }
           }
+          vTaskResume(Task_Status);
+          taskEXIT_CRITICAL(&myMutex);
           horizontalMove();
           //delay(2000);
         }
@@ -97,13 +168,13 @@ void processSDFile() {
         // Read column by column from the last to the first
         for (int col = lines[0].length() - 1; col >= 0; col--) {
           for (int row = lineCount - 1; row >= 0; row--) {
+            vTaskSuspend(Task_Status);
             if (col < lines[row].length() && lines[row][col] == '1') {
               Serial.println("1 found in col " + String(col + 1) + " and row " + String(row + 1));
-              vTaskSuspend(Task_Status);
               makeDot(row);
-              vTaskResume(Task_Status);
               //delay(500);
             }
+            vTaskResume(Task_Status);
           }
           horizontalMove();
           //delay(2000);
@@ -111,7 +182,7 @@ void processSDFile() {
       }
       driver2.toff(0);
       verticleMove();
-      delay(2000);
+      //delay(2000);
 
       // Alternate direction
       forward = !forward;

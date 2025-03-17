@@ -10,12 +10,16 @@
 #include <BLECharacteristic.h>
 #include <BLE2902.h>
 
+#include "FS.h"
+#include "SD.h"
+#include "SPI.h"
+
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID1 "beb5483e-36e1-4688-b7f5-ea07361b26a8" // used to read image data
-#define CHARACTERISTIC_UUID2 "64f90866-d4bb-493d-bd01-e532e4e34021" // used to send debug messages
+#define CHARACTERISTIC_UUID2 "64f90866-d4bb-493d-bd01-e532e4e34021" // used to send debug messages, used to receive pre and post image details
 #define CHARACTERISTIC_UUID3 "48524cb9-9db9-4ce3-b263-85169799a6f3" // used to send status messages and receive play, pause, and print messages
 
 BLECharacteristic *pCharacteristic2;
@@ -32,11 +36,51 @@ uint8_t batteryPercent = 100;
 int16_t printStatus = -1;
 uint8_t additionToPrintStatus = 0;
 
+uint16_t widthOfImage;
+uint16_t heightOfImage;
+uint32_t expectedBytes;
+uint32_t countBytes;
+
 // Task handles
 TaskHandle_t Task1Handle;
 TaskHandle_t Task2Handle;
 
 SemaphoreHandle_t bluetoothMutex = xSemaphoreCreateMutex();
+
+// SD Card Management
+
+void writeFile(fs::FS &fs, const char *path, const char *message) {
+  Serial.printf("Writing file: %s\n", path);
+
+  File file = fs.open(path, FILE_WRITE);
+  if (!file) {
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+  if (file.print(message)) {
+    Serial.println("File written");
+  } else {
+    Serial.println("Write failed");
+  }
+  file.close();
+}
+
+void appendFile(fs::FS &fs, const char *path, const char *message) {
+  Serial.printf("Appending to file: %s\n", path);
+
+  File file = fs.open(path, FILE_APPEND);
+  if (!file) {
+    Serial.println("Failed to open file for appending");
+    return;
+  }
+  if (file.print(message)) {
+    Serial.println("Message appended");
+  } else {
+    Serial.println("Append failed");
+  }
+  file.close();
+}
+
 
 // Task 1: Debug terminal messages
 void Task1(void *parameter) {
@@ -87,42 +131,42 @@ class MyServerCallbacks : public BLEServerCallbacks {
 class MyCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pCharacteristic) {
 
-    xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
-
     String value = pCharacteristic->getValue();
 
-    // write value to sd card
-
-    // store [value, value+1, value+2]
-    // one storage on flash memory
-
-    //Serial.print(pCharacteristic->getValue());
+    xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
 
     Serial.println(value.length());
 
     if (value.length() > 0) {
+        String allBinaryData = "";
         Serial.println("Received data:");
         for (size_t i = 0; i < value.length(); i++) {
-            Serial.printf("Byte %zu: 0x%02X\n", i, (unsigned char)value[i]);
+          Serial.printf("Byte %zu: 0x%02X\n", i, (unsigned char)value[i]);
+          String binaryValue = hexToBinary((unsigned char)value[i]);
+          allBinaryData += binaryValue;
+          countBytes += 1;
+
+          if (countBytes % widthOfImage == 0) {
+            allBinaryData += "\n";
+          }
         }
+        appendFile(SD, "/newImage.txt", allBinaryData.c_str());
+        allBinaryData = "";
     }
 
-    printStatus = 0;
-
     xSemaphoreGive(bluetoothMutex);
-
-    // String value = String(pCharacteristic->getValue().c_str());
-    // Serial.println("Receiving data");
-    // Serial.println(value);
-    // Serial.println(pCharacteristic->getValue());
-    // if (value.length() > 0) {
-    //     Serial.println("Received data:");
-    //     for (size_t i = 0; i < value.length(); i++) {
-    //         Serial.printf("Byte %zu: 0x%02X\n", i, (unsigned char)value[i]);
-    //     }
-    // }
   }
 };
+
+String hexToBinary(unsigned char byteValue) {
+  String binary = "";
+  // Loop through each bit
+  for (int i = 7; i >= 0; i--) {
+    // Check if the bit is set (1) or not (0) and append '1' or '0'
+    binary += (byteValue & (1 << i)) ? '1' : '0';
+  }
+  return binary;  // Return the 8-bit binary representation as a string
+}
 
 //Callback for handling incoming data
 class MyCallbacks1 : public BLECharacteristicCallbacks {
@@ -131,8 +175,6 @@ class MyCallbacks1 : public BLECharacteristicCallbacks {
     xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
 
     String value = pCharacteristic->getValue();
-
-    //Serial.println(value.length());
 
     Serial.println((unsigned char)value[0]);
 
@@ -150,9 +192,58 @@ class MyCallbacks1 : public BLECharacteristicCallbacks {
   }
 };
 
+//Callback for handling incoming data
+class MyCallbacks2 : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic) {
+
+    xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
+
+    String value = pCharacteristic->getValue();
+
+    if (value.length() == 6) {
+      writeFile(SD, "/newImage.txt", "");
+      countBytes = 0;
+          // Convert first 4 bytes into a 32-bit integer
+      expectedBytes = ((uint32_t)(unsigned char)value[0] << 24) |
+                            ((uint32_t)(unsigned char)value[1] << 16) |
+                            ((uint32_t)(unsigned char)value[2] << 8) |
+                            ((uint32_t)(unsigned char)value[3]);
+
+      // Convert last 2 bytes into a 16-bit integer
+      widthOfImage = ((uint16_t)(unsigned char)value[4] << 8) |
+                            ((uint16_t)(unsigned char)value[5]);
+
+      heightOfImage = expectedBytes / widthOfImage;
+    }
+    else if (value.length() == 1) {
+      if (countBytes == expectedBytes) {
+        Serial.println("Success!");
+      }
+      else {
+        Serial.println("Failure");
+      }
+      Serial.println(countBytes);
+      Serial.println(expectedBytes);
+      countBytes = 0;
+    }
+
+    xSemaphoreGive(bluetoothMutex);
+  }
+};
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting BLE work!");
+
+  if (!SD.begin()) {
+    Serial.println("Card Mount Failed");
+    while(1);
+  }
+
+  if (SD.cardType() == CARD_NONE) {
+    Serial.println("No SD card attached");
+    while(1);
+  }
 
   BLEDevice::deinit(true);
 
@@ -170,6 +261,7 @@ void setup() {
   pCharacteristic2 =
     pService->createCharacteristic(CHARACTERISTIC_UUID2, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_WRITE);
   pCharacteristic2->addDescriptor(new BLE2902());
+  pCharacteristic2->setCallbacks(new MyCallbacks2());
   pCharacteristic2->setValue("Second Characteristic");
 
   pCharacteristic3 =

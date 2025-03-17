@@ -1,7 +1,7 @@
 #ifndef MOTORCONTROL_H
 #define MOTORCONTROL_H
 
-#include <Arduino.h>
+//#include <Arduino.h>
 #include <TMC2208Stepper.h>
 
 extern const int stepPin1;

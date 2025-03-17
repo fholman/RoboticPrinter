@@ -3,4 +3,9 @@
 
 #include <Arduino.h>
 
+void debugTask(String msg);
+void statusMessages();
+String hexToBinary(unsigned char byteValue);
+void setupBluetooth();
+
 #endif

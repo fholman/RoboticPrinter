@@ -1,29 +1,30 @@
 #include <Arduino.h>
-#include <SPI.h>
-#include <SD.h>
+#include <cstdint>
+//#include <SPI.h>
+// #include <SD.h>
 #include <TMC2208Stepper.h>
-#include <Arduino_FreeRTOS.h>
+//#include <Arduino_FreeRTOS.h>
 
 #include "BluetoothControl.h"
 #include "FileControl.h"
 #include "MotorControl.h"
 #include "PrintheadControl.h"
 
-#define RX_PIN 15
-#define TX_PIN 14
-#define RX1_PIN 19
-#define TX1_PIN 18
+#define RX1_PIN 19  // Define correct RX pin for ESP32 UART1
+#define TX1_PIN 18  // Define correct TX pin for ESP32 UART1
+#define RX2_PIN 15  // Define correct RX pin for ESP32 UART2
+#define TX2_PIN 14  // Define correct TX pin for ESP32 UART2
 
 #define Current 250
 #define MicroStep 8
 
-TMC2208Stepper driver = TMC2208Stepper(RX1_PIN, TX1_PIN);
-TMC2208Stepper driver2 = TMC2208Stepper(RX_PIN, TX_PIN);
+// Create hardware serial instances for ESP32 UART
+HardwareSerial TMC_Serial1(1);  // UART1
+HardwareSerial TMC_Serial2(2);  // UART2
 
-// port assignment
-// #define bluetooth_RX PB_11
-// #define bluetooth_TX PB_10
-// HardwareSerial BluetoothSerial(bluetooth_RX, bluetooth_TX);
+// Initialize TMC2208 drivers with correct serial instances
+TMC2208Stepper driver = TMC2208Stepper(&TMC_Serial1);
+TMC2208Stepper driver2 = TMC2208Stepper(&TMC_Serial2);
 
 TaskHandle_t Task_Main;
 TaskHandle_t Task_Status;
@@ -39,26 +40,29 @@ const uint8_t dotPause = 5;
 const int dotPauseLong = 2000;
 
 const int chipSelect = 53;
-File dataFile;
+//File dataFile;
 
 void setup() {
   
-  Serial.begin(115200);
-  while (!Serial) {
-    ;
-  }
+  // Serial.begin(115200);
+  // while (!Serial) {
+  //   ;
+  // }
 
-  driver.beginSerial(115200);  
-  driver2.beginSerial(115200); 
+  TMC_Serial1.begin(115200, SERIAL_8N1, RX1_PIN, TX1_PIN);
+  TMC_Serial2.begin(115200, SERIAL_8N1, RX2_PIN, TX2_PIN);
   driver.push();
   driver2.push(); 
 
-  Serial.print("\nInitialising SD card...");
-  if (!SD.begin(chipSelect)) {
-    Serial.println("initialization failed!");
-    while(true);
-  }
-  Serial.println("\ninitialisation done.");
+
+  setupSD();
+
+  // Serial.print("\nInitialising SD card...");
+  // if (!SD.begin(chipSelect)) {
+  //   Serial.println("initialization failed!");
+  //   while(true);
+  // }
+  // Serial.println("\ninitialisation done.");
 
   // BluetoothSerial.begin(460800);
 
@@ -92,6 +96,8 @@ void setup() {
   driver2.mstep_reg_select(1);
   driver2.mres(MicroStep);
 
+  setupBluetooth();
+
   xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
   xTaskCreate(BluetoothStatus, "Status", 2048, NULL, 1, &Task_Status);
 }
@@ -105,8 +111,8 @@ void MainFunctions(void *param) {
 
   (void) param;
 
-  Serial.println("MainFunction Loop reached");
-  delay(2000);
+  // Serial.println("MainFunction Loop reached");
+  // delay(2000);
   processSDFile();
 }
 
@@ -115,8 +121,8 @@ void BluetoothStatus(void *param) {
   (void) param;
 
   while(1) {
-    vTaskDelay(1000/portTICK_PERIOD_MS); // 1 second delay on this split 
-    // Bluetooth();
-    Serial.println("Bluetooth Message Send");
+    statusMessages();
+    
+    vTaskDelay(5000/portTICK_PERIOD_MS);
   }
 }
