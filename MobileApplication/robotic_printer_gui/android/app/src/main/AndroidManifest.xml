@@ -35,7 +35,7 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     
     <application
-        android:label="robotic_printer_gui"
+        android:label="PrintBot"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

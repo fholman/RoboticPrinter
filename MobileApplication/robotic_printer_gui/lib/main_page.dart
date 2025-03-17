@@ -25,7 +25,7 @@ class MainPageContentComponent extends StatefulWidget {
 
 class _MainPageContentComponentState extends State<MainPageContentComponent> {
 
-  File? image;
+  //File? image;
   File? displayedImage;
   int? widthtext;
   int? heighttext;
@@ -40,46 +40,16 @@ class _MainPageContentComponentState extends State<MainPageContentComponent> {
   }
 
   Future pickImage() async {
-    try {
-      final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final image = await ImagePicker().pickImage(source: ImageSource.gallery);
 
-      if (image == null) return;
+    if (image == null) return;
 
-      final imageTemp = File(image.path);
-      
-      final originalImage = img.decodeImage(imageTemp.readAsBytesSync());
+    final imageTemp = File(image.path);
 
-      if (originalImage != null) {
-
-        img.Image rescaledImage = img.copyResize(originalImage, width:200);
-
-        rescaledImage = img.grayscale(rescaledImage);
-
-        final directory = await Directory.systemTemp.createTemp(); // Temp directory
-        final processedImagePath = '${directory.path}/processed_image.png';
-        File(processedImagePath).writeAsBytesSync(img.encodePng(rescaledImage));
-        setState(() => this.displayedImage = File(processedImagePath));
-
-        final ogdirectory = await Directory.systemTemp.createTemp(); // Temp directory
-        final ogprocessedImagePath = '${ogdirectory.path}/processed_image.png';
-        File(ogprocessedImagePath).writeAsBytesSync(img.encodePng(originalImage));
-        setState(() => this.image = File(ogprocessedImagePath));
-
-        setState(() => this.widthtext = rescaledImage.width);
-        setState(() => this.heighttext = rescaledImage.height);
-
-        File imageFile = File(image.path);
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => PrintPageContentComponent(printImage: imageFile)),
-        );
-
-      }
-
-    } on PlatformException catch(e) {
-      print('Failed to pick image: $e');
-    }
+    Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PrintPageContentComponent(printImage: imageTemp)),
+      );
   }
 
   @override

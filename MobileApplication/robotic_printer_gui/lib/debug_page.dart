@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'bluetooth_service.dart'; 
+import 'custom_bluetooth_indicator.dart';
+import 'custom_drawer.dart';
 
 class DebugPage extends StatefulWidget {
   @override
@@ -13,7 +15,11 @@ class _DebugPageState extends State<DebugPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Debug Terminal'),
+        actions: [
+          CustomBluetoothIndicator(),
+        ],
       ),
+      drawer: CustomDrawer(),
       body: ValueListenableBuilder<List<String>>(
         valueListenable: TheBluetoothService().entriesNotifier,
         builder: (context, entries, child) {

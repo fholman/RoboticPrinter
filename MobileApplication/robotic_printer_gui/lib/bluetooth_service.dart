@@ -8,9 +8,12 @@ class TheBluetoothService {
   ScanResult? connectedDevice;
   final ValueNotifier<bool> isConnected = ValueNotifier<bool>(false);
   ValueNotifier<List<String>> entriesNotifier = ValueNotifier<List<String>>([]);
+  ValueNotifier<String> statusNotifier = ValueNotifier<String>(",-1");
   StreamSubscription? debugSubscription;
   StreamSubscription? statusSubscription;
+  StreamSubscription? progressSubscription;
   DateTime? previous;
+  List<BluetoothCharacteristic>? characteristics;
 
   factory TheBluetoothService() {
     return _singleton;
@@ -64,7 +67,7 @@ class TheBluetoothService {
               print('Connected to ${r.device.name}');
 
               try {
-                await r.device.requestMtu(255);
+                await r.device.requestMtu(400);
                 print('MTU set to 255');
               } catch (mtuError) {
                 print('Failed to set MTU: $mtuError');
@@ -72,7 +75,8 @@ class TheBluetoothService {
 
               connectedDevice = r; // Store the connected device
               isConnected.value = true;
-              await debugListener();
+              //await printProgressListener();
+              //await debugListener();
               await statusListener();
               return; // Exit the function upon successful connection
             } catch (connectionError) {
@@ -97,20 +101,56 @@ class TheBluetoothService {
     }
   }
 
+  Future<void> printProgressListener() async {
+    BluetoothCharacteristic? c = await charFinder(Guid("48524cb9-9db9-4ce3-b263-85169799a6f3"));
+
+    if (c != null) {
+
+      await c.setNotifyValue(true);
+
+      try {
+        // Listen for changes to the characteristic value
+        progressSubscription = c.value.listen(
+          (value) {
+            if (String.fromCharCodes(value) != "") {
+              statusNotifier.value = String.fromCharCodes(value);
+              print(String.fromCharCodes(value)); 
+            }
+          },
+          onError: (error) {
+            print("Error: $error");  // Handle error
+          },
+        );
+      } catch (e) {
+        print("Error setting notify value: $e");
+      }
+
+    }
+  }
+
   Future<void> statusListener() async {
     try {
       // Listen for the connection state changes
-      statusSubscription = connectedDevice!.device.state.listen((state) {
+      statusSubscription = connectedDevice!.device.state.listen((state) async {
         if (state == BluetoothDeviceState.connected) {
           print("Device is connected.");
+          await findAllCharacteristics();
           isConnected.value = true;
           if (debugSubscription == null) {
-            debugListener();
+            await debugListener();
+          }
+          if (progressSubscription == null) {
+            await printProgressListener();
           }
         } else if (state == BluetoothDeviceState.disconnected) {
           print("Device is disconnected.");
           isConnected.value = false;
+          statusNotifier.value = "";
           //statusSubscription!.cancel();
+          if (progressSubscription != null) {
+            progressSubscription!.cancel();
+            progressSubscription = null;
+          }
           if (debugSubscription != null) {
             debugSubscription!.cancel();
             debugSubscription = null;
@@ -133,12 +173,12 @@ class TheBluetoothService {
         // Listen for changes to the characteristic value
         debugSubscription = c.value.listen(
           (value) {
-            DateTime now = DateTime.now();
-            String message = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} - ${String.fromCharCodes(value)}";
             if (String.fromCharCodes(value) != "") {
+              DateTime now = DateTime.now();
+              String message = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} - ${String.fromCharCodes(value)}";
               entriesNotifier.value = [message] + List.from(entriesNotifier.value);
+              print(message);  // Convert byte data to string
             }
-            print(message);  // Convert byte data to string
           },
           onError: (error) {
             print("Error: $error");  // Handle error
@@ -151,36 +191,67 @@ class TheBluetoothService {
     }
   }
 
-  Future<BluetoothCharacteristic?> charFinder(final char) async {
-    BluetoothCharacteristic? targChar;
-
+  Future<void> findAllCharacteristics() async {
     final serviceUUID = Guid("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
-    final characteristicUUID2 = char;
 
     try {
       List<BluetoothService> services = await connectedDevice!.device.discoverServices();
 
       for (BluetoothService service in services) {
         if (service.uuid == serviceUUID) {
-          var characteristics = service.characteristics;
-          for(BluetoothCharacteristic c in characteristics) {
-            print(c.uuid);
-            if (c.uuid == characteristicUUID2) {
-              targChar = c;
-              print("Found Target Characteristic");
-              return targChar;
-            }
-          }
+          characteristics = service.characteristics;
+          return;
         }
-        if (targChar != null) break;
       }
 
     } catch (e) {
       print("Error during service discovery: $e");
     }
 
+    print("Cannot Find Service");
+  }
+
+  Future<BluetoothCharacteristic?> charFinder(final char) async {
+    BluetoothCharacteristic? targChar;
+
+    final characteristicUUID2 = char;
+
+    for(BluetoothCharacteristic c in characteristics!) {
+      print(c.uuid);
+      if (c.uuid == characteristicUUID2) {
+        targChar = c;
+        print("Found Target Characteristic");
+        return targChar;
+      }
+    }
+
     print("Target Characteristic Not Found");
     return null;
+
+    // try {
+    //   List<BluetoothService> services = await connectedDevice!.device.discoverServices();
+
+    //   for (BluetoothService service in services) {
+    //     if (service.uuid == serviceUUID) {
+    //       var characteristics = service.characteristics;
+    //       for(BluetoothCharacteristic c in characteristics) {
+    //         print(c.uuid);
+    //         if (c.uuid == characteristicUUID2) {
+    //           targChar = c;
+    //           print("Found Target Characteristic");
+    //           return targChar;
+    //         }
+    //       }
+    //     }
+    //     if (targChar != null) break;
+    //   }
+
+    // } catch (e) {
+    //   print("Error during service discovery: $e");
+    // }
+
+    // print("Target Characteristic Not Found");
+    // return null;
     
   }
 }
