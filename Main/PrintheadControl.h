@@ -3,11 +3,18 @@
 
 #include <Arduino.h>
 
-extern const uint8_t nozzlePins[12];
+class PrintheadControl {
 
-extern const uint8_t dotPause;
-extern const int dotPauseLong;
+  private:
+    const uint8_t nozzlePins[12] = {30, 28, 22, 24, 26, 35, 36, 37, 34, 33, 32, 31};
 
-void makeDot(uint8_t nozzle);
+    const uint8_t dotPause = 5;
+    const int dotPauseLong = 2000;
+
+  public:
+    void printheadSetUp();
+    void makeDot(uint8_t nozzle);
+
+}
 
 #endif
