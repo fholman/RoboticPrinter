@@ -15,7 +15,7 @@
 #define RX2_PIN 15  // Define correct RX pin for ESP32 UART2
 #define TX2_PIN 14  // Define correct TX pin for ESP32 UART2
 
-#define Current 250
+#define Current 125
 #define MicroStep 8
 
 // Create hardware serial instances for ESP32 UART
@@ -96,7 +96,7 @@ void setup() {
   driver2.mstep_reg_select(1);
   driver2.mres(MicroStep);
 
-  setupBluetooth();
+  //setupBluetooth();
 
   xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
   xTaskCreate(BluetoothStatus, "Status", 2048, NULL, 1, &Task_Status);
@@ -113,15 +113,17 @@ void MainFunctions(void *param) {
 
   // Serial.println("MainFunction Loop reached");
   // delay(2000);
-  processSDFile();
+  //processSDFile();
 }
 
 void BluetoothStatus(void *param) {
 
   (void) param;
 
+  BluetoothControl& btControl = BluetoothControl::getInstance();
+
   while(1) {
-    statusMessages();
+    // statusMessages();
     
     vTaskDelay(5000/portTICK_PERIOD_MS);
   }
