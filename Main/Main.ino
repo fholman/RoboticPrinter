@@ -16,6 +16,9 @@ TaskHandle_t Task_Status;
 const int chipSelect = 53;
 //File dataFile;
 
+MotorControl motor(12, 13, 14, 15);
+FileControl fileHandler(&motor);
+
 MotorControl motorControl(3, 4, 5, 6);
 
 void setup() {
