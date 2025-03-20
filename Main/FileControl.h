@@ -14,7 +14,6 @@
 class FileControl {
 
   private:
-  MotorControl* motor;
   String lines[12];
   int lineCount;
   static bool forward;
@@ -24,7 +23,7 @@ class FileControl {
   void appendFile(fs::FS &fs, const char *path, const char *message);
 
   public:
-    FileControl(MotorControl* motorPtr = nullptr);
+    FileControl();
     void setupSD();
     void processSDFile();
     void writeFile(const char* path, const char* message);
