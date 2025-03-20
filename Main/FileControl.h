@@ -11,19 +11,24 @@
 #include "PrintheadControl.h"
 //#include <Arduino_FreeRTOS.h>
 
+class FileControl {
 
-extern TaskHandle_t Task_Status;
+  private:
+  MotorControl* motor;
+  String lines[12];
+  int lineCount;
+  static bool forward;
+  portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
 
-void setupSD();
+  void writeFile(fs::FS &fs, const char *path, const char *message);
+  void appendFile(fs::FS &fs, const char *path, const char *message);
 
-void processSDFile();
-
-void writeFile(const char *path, const char *message);
-
-void writeFile(fs::FS &fs, const char *path, const char *message);
-
-void appendFile(const char *path, const char *message);
-
-void appendFile(fs::FS &fs, const char *path, const char *message);
+  public:
+    FileControl(MotorControl* motorPtr = nullptr);
+    void setupSD();
+    void processSDFile();
+    void writeFile(const char* path, const char* message);
+    void appendFile(const char* path, const char* message);
+}
 
 #endif
