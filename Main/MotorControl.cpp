@@ -1,7 +1,6 @@
 #include "MotorControl.h"
 #include <TMC2208Stepper.h>
 
-
 void horizontalMove() {
   Serial.println("Motor horizontal move");
 

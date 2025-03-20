@@ -35,59 +35,61 @@ private:
   void setupBluetooth();
   String hexToBinary(unsigned char byteValue);
 
+  static BluetoothControl* instance;
+
   BluetoothControl() {
+    Serial.println("Here");
     bluetoothMutex = xSemaphoreCreateMutex();
     setupBluetooth();
   }
 
-  static BluetoothControl instance;
 
 public:
   void debugTask(String msg);
   void statusMessages();
 
-  class MyServerCallbacks : public BLEServerCallbacks {
-    private:
-        BluetoothControl* parent; // Pointer to parent class
+  // class MyServerCallbacks : public BLEServerCallbacks {
+  //   private:
+  //       BluetoothControl* parent; // Pointer to parent class
 
-    public:
-        MyServerCallbacks(BluetoothControl* parentInstance) : parent(parentInstance) {}
+  //   public:
+  //       MyServerCallbacks(BluetoothControl* parentInstance) : parent(parentInstance) {}
 
-        void onConnect(BLEServer* pServer) override;
-        void onDisconnect(BLEServer* pServer) override;
-  };
+  //       void onConnect(BLEServer* pServer) override;
+  //       void onDisconnect(BLEServer* pServer) override;
+  // };
 
-  class ImageData : public BLECharacteristicCallbacks {
-    private:
-      BluetoothControl* parent; // Pointer to parent class
+  // class ImageData : public BLECharacteristicCallbacks {
+  //   private:
+  //     BluetoothControl* parent; // Pointer to parent class
     
-    public:
-      ImageData(BluetoothControl* parentInstance) : parent(parentInstance) {}
+  //   public:
+  //     ImageData(BluetoothControl* parentInstance) : parent(parentInstance) {}
 
-      void onWrite(BLECharacteristic *pCharacteristic) override;
-  };
+  //     void onWrite(BLECharacteristic *pCharacteristic) override;
+  // };
 
-  class statusOfPrint : public BLECharacteristicCallbacks {
-    private:
-      BluetoothControl* parent; // Pointer to parent class
+  // class statusOfPrint : public BLECharacteristicCallbacks {
+  //   private:
+  //     BluetoothControl* parent; // Pointer to parent class
     
-    public:
-      statusOfPrint(BluetoothControl* parentInstance) : parent(parentInstance) {}
+  //   public:
+  //     statusOfPrint(BluetoothControl* parentInstance) : parent(parentInstance) {}
 
-      void onWrite(BLECharacteristic *pCharacteristic) override;
-  };
+  //     void onWrite(BLECharacteristic *pCharacteristic) override;
+  // };
 
-  class imageInfo : public BLECharacteristicCallbacks {
-    private:
-      BluetoothControl* parent; // Pointer to parent class
+  // class imageInfo : public BLECharacteristicCallbacks {
+  //   private:
+  //     BluetoothControl* parent; // Pointer to parent class
     
-    public:
-      imageInfo(BluetoothControl* parentInstance) : parent(parentInstance) {}
+  //   public:
+  //     imageInfo(BluetoothControl* parentInstance) : parent(parentInstance) {}
 
-      void onWrite(BLECharacteristic *pCharacteristic) override;
-  };
+  //     void onWrite(BLECharacteristic *pCharacteristic) override;
+  // };
 
-  static BluetoothControl& getInstance();
+  static BluetoothControl* getInstance();
 
 };
 
