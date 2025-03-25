@@ -10,6 +10,13 @@
 #include <BLECharacteristic.h>
 #include <BLE2902.h>
 
+/*
+ 47 SCLK
+ 48 MISO
+ 42 MOSI
+ 41 SS
+*/
+
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
@@ -22,8 +29,15 @@
 #define CHARACTERISTIC_UUID2 "64f90866-d4bb-493d-bd01-e532e4e34021" // used to send debug messages, used to receive pre and post image details
 #define CHARACTERISTIC_UUID3 "48524cb9-9db9-4ce3-b263-85169799a6f3" // used to send status messages and receive play, pause, and print messages
 
+#define voltagePin 10
+
 BLECharacteristic *pCharacteristic2;
 BLECharacteristic *pCharacteristic3;
+
+int sck = 47;
+int miso = 48;
+int mosi = 42;
+int cs = 41;
 
 bool deviceConnected = false;
 
@@ -47,36 +61,40 @@ TaskHandle_t Task2Handle;
 
 SemaphoreHandle_t bluetoothMutex = xSemaphoreCreateMutex();
 
+uint16_t voltageReading = 0;
+
+
+
 // SD Card Management
 
 void writeFile(fs::FS &fs, const char *path, const char *message) {
-  Serial.printf("Writing file: %s\n", path);
+  // Serial.printf("Writing file: %s\n", path);
 
   File file = fs.open(path, FILE_WRITE);
   if (!file) {
-    Serial.println("Failed to open file for writing");
+    // Serial.println("Failed to open file for writing");
     return;
   }
   if (file.print(message)) {
-    Serial.println("File written");
+    // Serial.println("File written");
   } else {
-    Serial.println("Write failed");
+    // Serial.println("Write failed");
   }
   file.close();
 }
 
 void appendFile(fs::FS &fs, const char *path, const char *message) {
-  Serial.printf("Appending to file: %s\n", path);
+  // Serial.printf("Appending to file: %s\n", path);
 
   File file = fs.open(path, FILE_APPEND);
   if (!file) {
-    Serial.println("Failed to open file for appending");
+    // Serial.println("Failed to open file for appending");
     return;
   }
   if (file.print(message)) {
-    Serial.println("Message appended");
+    // Serial.println("Message appended");
   } else {
-    Serial.println("Append failed");
+    // Serial.println("Append failed");
   }
   file.close();
 }
@@ -85,11 +103,11 @@ void appendFile(fs::FS &fs, const char *path, const char *message) {
 // Task 1: Debug terminal messages
 void Task1(void *parameter) {
   while (true) {
+    voltageReading = analogRead(voltagePin);
     if (deviceConnected == true) {
       xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
-      pCharacteristic2->setValue("5");
+      pCharacteristic2->setValue(String(voltageReading));
       pCharacteristic2->notify();
-      Serial.println("Setting Value2");
       xSemaphoreGive(bluetoothMutex);
     }
     vTaskDelay(2000 / portTICK_PERIOD_MS); // Delay for 2 second
@@ -104,7 +122,6 @@ void Task2(void *parameter) {
       String msg = String(batteryPercent) + "," + String(printStatus);
       pCharacteristic3->setValue(msg);
       pCharacteristic3->notify();
-      Serial.println("Setting Characteristic 3 Value");
       printStatus += additionToPrintStatus;
       batteryPercent -= 1;
       xSemaphoreGive(bluetoothMutex);
@@ -117,12 +134,10 @@ void Task2(void *parameter) {
 class MyServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) {
     deviceConnected = true;
-    Serial.println("Device connected!");
   }
 
   void onDisconnect(BLEServer* pServer) {
     deviceConnected = false;
-    Serial.println("Device disconnected!");
     BLEDevice::startAdvertising(); // Restart advertising after disconnection
   }
 };
@@ -130,18 +145,13 @@ class MyServerCallbacks : public BLEServerCallbacks {
 //Callback for handling incoming data
 class MyCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pCharacteristic) {
-
     String value = pCharacteristic->getValue();
 
     xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
 
-    Serial.println(value.length());
-
     if (value.length() > 0) {
         String allBinaryData = "";
-        Serial.println("Received data:");
         for (size_t i = 0; i < value.length(); i++) {
-          Serial.printf("Byte %zu: 0x%02X\n", i, (unsigned char)value[i]);
           String binaryValue = hexToBinary((unsigned char)value[i]);
           allBinaryData += binaryValue;
           countBytes += 1;
@@ -171,12 +181,9 @@ String hexToBinary(unsigned char byteValue) {
 //Callback for handling incoming data
 class MyCallbacks1 : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pCharacteristic) {
-
     xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
 
     String value = pCharacteristic->getValue();
-
-    Serial.println((unsigned char)value[0]);
 
     if ((unsigned char)value[0] == 0) {
       additionToPrintStatus = 0;
@@ -216,14 +223,6 @@ class MyCallbacks2 : public BLECharacteristicCallbacks {
       heightOfImage = expectedBytes / widthOfImage;
     }
     else if (value.length() == 1) {
-      if (countBytes == expectedBytes) {
-        Serial.println("Success!");
-      }
-      else {
-        Serial.println("Failure");
-      }
-      Serial.println(countBytes);
-      Serial.println(expectedBytes);
       countBytes = 0;
     }
 
@@ -232,16 +231,18 @@ class MyCallbacks2 : public BLECharacteristicCallbacks {
 };
 
 void setup() {
-  Serial.begin(115200);
-  Serial.println("Starting BLE work!");
 
-  if (!SD.begin()) {
-    Serial.println("Card Mount Failed");
+  // pinMode(voltagePin, input);
+
+  SPI.begin(sck, miso, mosi, cs);
+
+  if (!SD.begin(cs)) {
+    // Serial.println("Card Mount Failed");
     while(1);
   }
 
   if (SD.cardType() == CARD_NONE) {
-    Serial.println("No SD card attached");
+    // Serial.println("No SD card attached");
     while(1);
   }
 
@@ -280,7 +281,6 @@ void setup() {
   pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
   pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
-  Serial.println("Characteristic defined! Now you can read it in your phone!");
 
   // Create Task 1
   xTaskCreate(
