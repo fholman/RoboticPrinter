@@ -32,11 +32,12 @@ class MotorControl {
     bool motor2State;
 
   public:
+    MotorControl(int step1, int step2, int step3, int step4);
     void motorSetUp();
     void horizontalMove();
     void verticleMove(); 
     void swapDirection();
     void driver2State();
-}
+};
 
 #endif

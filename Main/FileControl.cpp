@@ -44,13 +44,13 @@ void FileControl::appendFile(fs::FS& fs, const char* path, const char* message) 
     file.close();
 }
 
-void FileControl::processSDFile() {
+int FileControl::processSDFile() {
   lineCount = 0;
 
   File dataFile = SD.open("gridData.txt");
   if (!dataFile) {
     Serial.println("Error opening grid file!");
-    return;
+    return lineCount;
   }
 
   Serial.println("Processing dataFile.txt:");

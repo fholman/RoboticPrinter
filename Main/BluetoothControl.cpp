@@ -9,8 +9,6 @@
 #define CHARACTERISTIC_UUID2 "64f90866-d4bb-493d-bd01-e532e4e34021" // used to send debug messages, used to receive pre and post image details
 #define CHARACTERISTIC_UUID3 "48524cb9-9db9-4ce3-b263-85169799a6f3" // used to send status messages and receive play, pause, and print messages
 
-BluetoothControl* BluetoothControl::instance = nullptr;
-
 String BluetoothControl::hexToBinary(unsigned char byteValue) {
   String binary = "";
   // Loop through each bit
@@ -44,134 +42,128 @@ void BluetoothControl::statusMessages() {
     }
 }
 
-BluetoothControl* BluetoothControl::getInstance() {
-  if (instance == nullptr) {
-    instance = new BluetoothControl();  // Create the instance if it doesn't exist
-  }
-
-  Serial.println("Here As Well");
-  return instance;
+void BluetoothControl::MyServerCallbacks::onConnect(BLEServer* pServer) {
+  parent->deviceConnected = true;
+  Serial.println("Device connected!");
 }
 
-// void BluetoothControl::MyServerCallbacks::onConnect(BLEServer* pServer) {
-//   parent->deviceConnected = true;
-//   Serial.println("Device connected!");
-// }
+void BluetoothControl::MyServerCallbacks::onDisconnect(BLEServer* pServer) {
+  parent->deviceConnected = false;
+  Serial.println("Device disconnected!");
+  BLEDevice::startAdvertising(); // Restart advertising after disconnection
+}
 
-// void BluetoothControl::MyServerCallbacks::onDisconnect(BLEServer* pServer) {
-//   parent->deviceConnected = false;
-//   Serial.println("Device disconnected!");
-//   BLEDevice::startAdvertising(); // Restart advertising after disconnection
-// }
+void BluetoothControl::ImageData::onWrite(BLECharacteristic *pCharacteristic) {
+  String value = pCharacteristic->getValue();
 
-// void BluetoothControl::ImageData::onWrite(BLECharacteristic *pCharacteristic) {
-//   String value = pCharacteristic->getValue();
+  xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
 
-//   xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
+  Serial.println(value.length());
 
-//   Serial.println(value.length());
+  if (value.length() > 0) {
+      String allBinaryData = "";
+      Serial.println("Received data:");
+      for (size_t i = 0; i < value.length(); i++) {
+        Serial.printf("Byte %zu: 0x%02X\n", i, (unsigned char)value[i]);
+        String binaryValue = parent->hexToBinary((unsigned char)value[i]);
+        allBinaryData += binaryValue;
+        parent->countBytes += 1;
 
-//   if (value.length() > 0) {
-//       String allBinaryData = "";
-//       Serial.println("Received data:");
-//       for (size_t i = 0; i < value.length(); i++) {
-//         Serial.printf("Byte %zu: 0x%02X\n", i, (unsigned char)value[i]);
-//         String binaryValue = parent->hexToBinary((unsigned char)value[i]);
-//         allBinaryData += binaryValue;
-//         parent->countBytes += 1;
+        if (parent->countBytes % parent->widthOfImage == 0) {
+          allBinaryData += "\n";
+        }
+      }
+      // appendFile("/newImage.txt", allBinaryData.c_str());
+      allBinaryData = "";
+  }
 
-//         if (parent->countBytes % parent->widthOfImage == 0) {
-//           allBinaryData += "\n";
-//         }
-//       }
-//       // appendFile("/newImage.txt", allBinaryData.c_str());
-//       allBinaryData = "";
-//   }
+  xSemaphoreGive(parent->bluetoothMutex);
+}
 
-//   xSemaphoreGive(parent->bluetoothMutex);
-// }
+void BluetoothControl::statusOfPrint::onWrite(BLECharacteristic *pCharacteristic) {
+  xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
 
-// void BluetoothControl::statusOfPrint::onWrite(BLECharacteristic *pCharacteristic) {
-//   xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
+    String value = pCharacteristic->getValue();
 
-//     String value = pCharacteristic->getValue();
+    Serial.println((unsigned char)value[0]);
 
-//     Serial.println((unsigned char)value[0]);
+    if ((unsigned char)value[0] == 0) {
+      Serial.println("Got a zero");
+      parent->additionToPrintStatus = 0;
+    }
+    else if ((unsigned char)value[0] == 1) {
+      Serial.println("Got a one");
+      parent->additionToPrintStatus = 5;
+    }
+    else if ((unsigned char)value[0] == 2) {
+      Serial.println("Got a two");
+      parent->printStatus = 0;
+    }
 
-//     if ((unsigned char)value[0] == 0) {
-//       parent->additionToPrintStatus = 0;
-//     }
-//     else if ((unsigned char)value[0] == 1) {
-//       parent->additionToPrintStatus = 5;
-//     }
-//     else if ((unsigned char)value[0] == 2) {
-//       parent->printStatus = 0;
-//     }
+    xSemaphoreGive(parent->bluetoothMutex);
+}
 
-//     xSemaphoreGive(parent->bluetoothMutex);
-// }
+void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
+  xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
 
-// void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
-//   xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
+    String value = pCharacteristic->getValue();
 
-//     String value = pCharacteristic->getValue();
+    uint32_t expectedBytes;
 
-//     uint32_t expectedBytes;
+    if (value.length() == 6) {
+      // writeFile("/newImage.txt", "");
+      parent->countBytes = 0;
+          // Convert first 4 bytes into a 32-bit integer
+      expectedBytes = ((uint32_t)(unsigned char)value[0] << 24) |
+                            ((uint32_t)(unsigned char)value[1] << 16) |
+                            ((uint32_t)(unsigned char)value[2] << 8) |
+                            ((uint32_t)(unsigned char)value[3]);
 
-//     if (value.length() == 6) {
-//       // writeFile("/newImage.txt", "");
-//       parent->countBytes = 0;
-//           // Convert first 4 bytes into a 32-bit integer
-//       expectedBytes = ((uint32_t)(unsigned char)value[0] << 24) |
-//                             ((uint32_t)(unsigned char)value[1] << 16) |
-//                             ((uint32_t)(unsigned char)value[2] << 8) |
-//                             ((uint32_t)(unsigned char)value[3]);
+      // Convert last 2 bytes into a 16-bit integer
+      parent->widthOfImage = ((uint16_t)(unsigned char)value[4] << 8) |
+                            ((uint16_t)(unsigned char)value[5]);
 
-//       // Convert last 2 bytes into a 16-bit integer
-//       parent->widthOfImage = ((uint16_t)(unsigned char)value[4] << 8) |
-//                             ((uint16_t)(unsigned char)value[5]);
+      parent->heightOfImage = expectedBytes / parent->widthOfImage;
+    }
+    else if (value.length() == 1) {
+      if (parent->countBytes == expectedBytes) {
+        Serial.println("Success!");
+      }
+      else {
+        Serial.println("Failure");
+      }
+      Serial.println(parent->countBytes);
+      Serial.println(expectedBytes);
+      parent->countBytes = 0;
+    }
 
-//       parent->heightOfImage = expectedBytes / parent->widthOfImage;
-//     }
-//     else if (value.length() == 1) {
-//       if (parent->countBytes == expectedBytes) {
-//         Serial.println("Success!");
-//       }
-//       else {
-//         Serial.println("Failure");
-//       }
-//       Serial.println(parent->countBytes);
-//       Serial.println(expectedBytes);
-//       parent->countBytes = 0;
-//     }
-
-//     xSemaphoreGive(parent->bluetoothMutex);
-// }
+    xSemaphoreGive(parent->bluetoothMutex);
+}
 
 void BluetoothControl::setupBluetooth() {
   BLEDevice::deinit(true);
 
   BLEDevice::init("RoboPrinter");
   BLEServer *pServer = BLEDevice::createServer();
-  // pServer->setCallbacks(new MyServerCallbacks(this));
+  pServer->setCallbacks(new MyServerCallbacks(this));
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
 
   BLECharacteristic *pCharacteristic1 =
     pService->createCharacteristic(CHARACTERISTIC_UUID1, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  // pCharacteristic1->setCallbacks(new ImageData(this));
+  pCharacteristic1->setCallbacks(new ImageData(this));
   pCharacteristic1->setValue("First Characteristic");
 
   pCharacteristic2 =
     pService->createCharacteristic(CHARACTERISTIC_UUID2, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_WRITE);
   pCharacteristic2->addDescriptor(new BLE2902());
-  // pCharacteristic2->setCallbacks(new imageInfo(this));
+  pCharacteristic2->setCallbacks(new imageInfo(this));
   pCharacteristic2->setValue("Second Characteristic");
 
   pCharacteristic3 =
     pService->createCharacteristic(CHARACTERISTIC_UUID3, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_WRITE);
   pCharacteristic3->addDescriptor(new BLE2902());
-  // pCharacteristic3->setCallbacks(new statusOfPrint(this));
+  pCharacteristic3->setCallbacks(new statusOfPrint(this));
   pCharacteristic3->setValue("Third Characteristic");
 
 

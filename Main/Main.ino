@@ -16,8 +16,9 @@ TaskHandle_t Task_Status;
 const int chipSelect = 53;
 bool printDone = false;
 
-FileControl fileHandler();
-MotorControl motorControl(3, 4, 5, 6);
+// FileControl fileHandler();
+// MotorControl motorControl(3, 4, 5, 6);
+BluetoothControl* bluetooth;
 
 void setup() {
   
@@ -26,11 +27,11 @@ void setup() {
   //   ;
   // }
 
-  setupSD();
+  //setupSD();
 
-  Serial.println("Right here");
+  bluetooth = new BluetoothControl();
 
-  xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
+  //xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
   xTaskCreate(BluetoothStatus, "Status", 2048, NULL, 1, &Task_Status);
 }
 
@@ -41,34 +42,29 @@ void loop() {
 
 void MainFunctions(void *param) {
 
-  (void) param;
+  // (void) param;
 
-  Serial.println("MainFunction Loop reached");
+  // Serial.println("MainFunction Loop reached");
 
-  while(!printDone){
-    int linesRead = fileHandler.processSDFile();
-    if (linesRead > 0) {
-      // Now process those 12 lines and control the motor
-      print(linesRead);
-    } else {
-      Serial.println("End of print.");
-      printDone = true;
-    }
-  }
+  // while(!printDone){
+  //   int linesRead = fileHandler.processSDFile();
+  //   if (linesRead > 0) {
+  //     // Now process those 12 lines and control the motor
+  //     print(linesRead);
+  //   } else {
+  //     Serial.println("End of print.");
+  //     printDone = true;
+  //   }
+  // }
 }
 
 void BluetoothStatus(void *param) {
 
   (void) param;
 
-  Serial.println("Getting Instance");
-
-  BluetoothControl* btControl = BluetoothControl::getInstance();
-
-  Serial.println("Got Instance");
-
   while(1) {
-    // statusMessages();
+    bluetooth->statusMessages();
+    bluetooth->debugTask("Hello");
     
     vTaskDelay(5000/portTICK_PERIOD_MS);
   }
@@ -76,10 +72,10 @@ void BluetoothStatus(void *param) {
 
 void print(int lineCount){
   if (lineCount == 12 || !dataFile.available()) {
-    MotorControl.driver2State();
+    motorControl.driver2State();
 
     if (fileHandler.forward) {
-      MotorControl.swapDirection();
+      motorControl.swapDirection();
       // Read column by column from the first to the last
       for (size_t col = 0; col < fileHandler.lines[0].length(); col++) {
         taskENTER_CRITICAL(&myMutex);
@@ -109,11 +105,11 @@ void print(int lineCount){
           }
           vTaskResume(Task_Status);
         }
-        horizontalMove();
+        motorControl.horizontalMove();
         //delay(2000);
       }
     }
-    MotorControl.driver2State();
+    motorControl.driver2State();
     verticleMove();
     //delay(2000);
 

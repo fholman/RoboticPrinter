@@ -15,6 +15,6 @@ class PrintheadControl {
     void printheadSetUp();
     void makeDot(uint8_t nozzle);
 
-}
+};
 
 #endif

@@ -1,7 +1,5 @@
 #include "PrintheadControl.h"
 
-void MotorControl::motorSetUp(){
-
 void PrintheadControl::printheadSetUp(){
   for(int i = 0; i < 12; i++){
     pinMode(nozzlePins[i], OUTPUT);

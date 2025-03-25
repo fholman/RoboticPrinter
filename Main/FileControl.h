@@ -16,7 +16,7 @@ class FileControl {
   private:
   String lines[12];
   int lineCount;
-  static bool forward;
+  bool forward;
   portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
 
   void writeFile(fs::FS &fs, const char *path, const char *message);
@@ -25,9 +25,9 @@ class FileControl {
   public:
     FileControl();
     void setupSD();
-    void processSDFile();
+    int processSDFile();
     void writeFile(const char* path, const char* message);
     void appendFile(const char* path, const char* message);
-}
+};
 
 #endif
