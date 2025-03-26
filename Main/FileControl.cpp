@@ -56,7 +56,7 @@ int FileControl::processSDFile() {
   Serial.println("Processing dataFile.txt:");
 
   // Read file line by line
-  while (dataFile.available() || lineCount > 0) {
+  while (dataFile.available() && lineCount < 13) {
     if (dataFile.available()) {
       String line = dataFile.readStringUntil('\n');  // Read one line from the file
       line.trim();  // Trim any extra spaces or newline characters

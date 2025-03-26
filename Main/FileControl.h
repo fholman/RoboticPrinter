@@ -17,7 +17,6 @@ class FileControl {
   String lines[12];
   int lineCount;
   bool forward;
-  portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
 
   void writeFile(fs::FS &fs, const char *path, const char *message);
   void appendFile(fs::FS &fs, const char *path, const char *message);

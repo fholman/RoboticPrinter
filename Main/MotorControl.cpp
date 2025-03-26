@@ -5,9 +5,7 @@ MotorControl::MotorControl(int step1, int step2, int step3, int step4)
   : stepPin1(step1), stepPin2(step2), stepPin3(step3), stepPin4(step4),
     TMC_Serial1(1), TMC_Serial2(2),
     driver(&TMC_Serial1), driver2(&TMC_Serial2), 
-    shaftState(false), motor2State(false) {
-      motorSetUp();
-    }
+    shaftState(false), motor2State(false) {}
 
 void MotorControl::motorSetUp(){
   TMC_Serial1.begin(115200, SERIAL_8N1, RX1_PIN, TX1_PIN);
