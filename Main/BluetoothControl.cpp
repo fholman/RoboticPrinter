@@ -26,20 +26,19 @@ void BluetoothControl::debugTask(String msg) {
         pCharacteristic2->notify();
         xSemaphoreGive(bluetoothMutex);
     }
-    vTaskDelay(2000 / portTICK_PERIOD_MS); // Delay for 2 second
 }
 
 void BluetoothControl::statusMessages() {
-    if (deviceConnected == true) {
-        xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
-        String msg = String(batteryPercent) + "," + String(printStatus);
-        pCharacteristic3->setValue(msg);
-        pCharacteristic3->notify();
-        Serial.println("Setting Characteristic 3 Value");
-        printStatus += additionToPrintStatus;
-        batteryPercent -= 1;
-        xSemaphoreGive(bluetoothMutex);
-    }
+  if (deviceConnected == true) {
+    xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
+    String msg = String(batteryPercent) + "," + String(printStatus);
+    pCharacteristic3->setValue(msg);
+    pCharacteristic3->notify();
+    Serial.println("Setting Characteristic 3 Value");
+    printStatus += additionToPrintStatus;
+    batteryPercent -= 1;
+    xSemaphoreGive(bluetoothMutex);
+  }
 }
 
 void BluetoothControl::MyServerCallbacks::onConnect(BLEServer* pServer) {
@@ -83,25 +82,27 @@ void BluetoothControl::ImageData::onWrite(BLECharacteristic *pCharacteristic) {
 void BluetoothControl::statusOfPrint::onWrite(BLECharacteristic *pCharacteristic) {
   xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
 
-    String value = pCharacteristic->getValue();
+  String value = pCharacteristic->getValue();
 
-    Serial.println((unsigned char)value[0]);
+  Serial.println((unsigned char)value[0]);
 
-    if ((unsigned char)value[0] == 0) {
-      Serial.println("Got a zero");
-      parent->additionToPrintStatus = 0;
-    }
-    else if ((unsigned char)value[0] == 1) {
-      Serial.println("Got a one");
-      parent->additionToPrintStatus = 5;
-    }
-    else if ((unsigned char)value[0] == 2) {
-      Serial.println("Got a two");
-      parent->printStatus = 0;
-    }
+  if ((unsigned char)value[0] == 0) { // pause
+    Serial.println("Got a zero");
+    parent->additionToPrintStatus = 0;
+  }
+  else if ((unsigned char)value[0] == 1) { // play
+    Serial.println("Got a one");
+    parent->additionToPrintStatus = 5;
+  }
+  else if ((unsigned char)value[0] == 2) { // stop
+    Serial.println("Got a two");
+    parent->printStatus = 0;
+  }
 
-    xSemaphoreGive(parent->bluetoothMutex);
+  xSemaphoreGive(parent->bluetoothMutex);
 }
+
+
 
 void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
   xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);

@@ -31,7 +31,7 @@ void setup() {
 
   bluetooth = new BluetoothControl();
 
-  //xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
+  xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
   xTaskCreate(BluetoothStatus, "Status", 2048, NULL, 1, &Task_Status);
 }
 
@@ -42,20 +42,17 @@ void loop() {
 
 void MainFunctions(void *param) {
 
-  // (void) param;
+  (void) param;
 
-  // Serial.println("MainFunction Loop reached");
+  Serial.println("MainFunction Loop reached");
 
-  // while(!printDone){
-  //   int linesRead = fileHandler.processSDFile();
-  //   if (linesRead > 0) {
-  //     // Now process those 12 lines and control the motor
-  //     print(linesRead);
-  //   } else {
-  //     Serial.println("End of print.");
-  //     printDone = true;
-  //   }
-  // }
+  while(1){
+    int linesRead = fileHandler.processSDFile();
+    if (linesRead > 0) {
+      // Now process those 12 lines and control the motor
+      print(linesRead);
+    }
+  }
 }
 
 void BluetoothStatus(void *param) {
@@ -93,7 +90,7 @@ void print(int lineCount){
         //delay(2000);
       }
     } else {
-      MotorControl.swapDirection();
+      motorControl.swapDirection();
       // Read column by column from the last to the first
       for (int col = fileHandler.lines[0].length() - 1; col >= 0; col--) {
         for (int row = lineCount - 1; row >= 0; row--) {
