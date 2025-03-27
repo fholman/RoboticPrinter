@@ -4,7 +4,7 @@
 MotorControl::MotorControl(int step1, int step2, int step3, int step4)
   : stepPin1(step1), stepPin2(step2), stepPin3(step3), stepPin4(step4),
     TMC_Serial1(1), TMC_Serial2(2),
-    driver(&TMC_Serial1), driver2(&TMC_Serial2), 
+    driver(&TMC_Serial2), driver2(&TMC_Serial1), 
     shaftState(false), motor2State(false) {}
 
 void MotorControl::motorSetUp(){
@@ -38,19 +38,19 @@ void MotorControl::motorSetUp(){
   driver2.mstep_reg_select(1);
   driver2.mres(MicroStep);
 
-  Serial.println("Motors set up");
+  //Serial.println("Motors set up");
 }
 
 void MotorControl::horizontalMove() {
-  Serial.println("Motor horizontal move");
+  //Serial.println("Motor horizontal move");
 
   for(int x = 0; x < 14; x++) {
-    digitalWrite(stepPin3,HIGH); 
-    digitalWrite(stepPin4,HIGH); 
-    delayMicroseconds(1000);    // by changing this time delay between the steps we can change the rotation speed
-    digitalWrite(stepPin3,LOW); 
-    digitalWrite(stepPin4,LOW); 
-    delay(25); 
+    digitalWrite(stepPin1,HIGH); 
+    digitalWrite(stepPin2,HIGH); 
+    delayMicroseconds(1000);
+    digitalWrite(stepPin1,LOW); 
+    digitalWrite(stepPin2,LOW); 
+    delay(30); // by changing this time delay between the steps we can change the rotation speed
   }
 }
 
@@ -59,18 +59,18 @@ void MotorControl::verticleMove() {
   driver.toff(5);
 
   for(int x = 0; x < 96; x++) {
-    digitalWrite(stepPin1,HIGH); 
-    digitalWrite(stepPin2,HIGH);
-    delayMicroseconds(1000);    // by changing this time delay between the steps we can change the rotation speed
-    digitalWrite(stepPin1,LOW); 
-    digitalWrite(stepPin2,LOW);
-    delay(25); 
+    digitalWrite(stepPin3,HIGH); 
+    digitalWrite(stepPin4,HIGH);
+    delayMicroseconds(1000);
+    digitalWrite(stepPin3,LOW); 
+    digitalWrite(stepPin4,LOW);
+    delay(30); // by changing this time delay between the steps we can change the rotation speed
   }
   driver.toff(0);
 }
 
 void MotorControl::swapDirection() {
-  Serial.println("Swap Direction");
+  //Serial.println("Swap Direction");
   if(shaftState) {
     driver2.shaft(false);
     shaftState = false;
@@ -81,7 +81,7 @@ void MotorControl::swapDirection() {
 }
 
 void MotorControl::driver2State() {
-  Serial.println("Motor State Changed");
+  //Serial.println("Motor State Changed");
   if(motor2State) {
     driver2.toff(0);
     motor2State = false;

@@ -18,7 +18,7 @@ bool printDone = false;
 
 FileControl fileControl;
 PrintheadControl printheadControl;
-MotorControl motorControl(3, 4, 5, 6);
+MotorControl motorControl(21, 13, 11, 9);
 BluetoothControl* bluetooth;
 
 portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
@@ -34,7 +34,7 @@ void setup() {
   printheadControl.printheadSetUp();
   motorControl.motorSetUp();
 
-  bluetooth = new BluetoothControl();
+  bluetooth = new BluetoothControl(fileControl);
 
   xTaskCreate(MainFunctions, "Main", 2048, NULL, 1, &Task_Main);
   xTaskCreate(BluetoothStatus, "Status", 2048, NULL, 1, &Task_Status);
@@ -100,9 +100,9 @@ void MainFunctions(void *param) {
           Serial.println("Bluetooth device disconnected. Waiting for reconnection.");
         } 
         else if(bluetooth->getIsImageReceived() && pauseRequested) {
-            currentState = PAUSED;
-            pauseRequested = false;
-            Serial.println("Pause until play");
+          currentState = PAUSED;
+          pauseRequested = false;
+          Serial.println("Pause until play");
         }
         else if(bluetooth->getIsImageReceived() && !pauseRequested) {
           linesRead = fileControl.processSDFile();

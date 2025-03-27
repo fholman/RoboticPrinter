@@ -12,6 +12,8 @@ class BluetoothControl {
 
 private:
 
+  FileControl& file;
+
   BLECharacteristic *pCharacteristic2;
   BLECharacteristic *pCharacteristic3;
 
@@ -22,7 +24,7 @@ private:
 
   // need to be clear what each print status means!
   // = -1 means there is no print loaded on the SD card
-  // = 0 means there is a print loaded on the SD card but it is not currently printed so can be overidden
+  // = 0 means there is a print loaded on the SD card but it is not currently printing so can be overidden
   // 1 - 100 means print is in progress (where 1 means just started and 100 means complete)
   int16_t printStatus = -1;
   uint8_t additionToPrintStatus = 0;
@@ -40,7 +42,7 @@ private:
 
 
 public:
-  BluetoothControl() {
+  BluetoothControl(FileControl& f) : file(f) {
     bluetoothMutex = xSemaphoreCreateMutex();
     setupBluetooth();
   }

@@ -53,66 +53,71 @@ void BluetoothControl::MyServerCallbacks::onDisconnect(BLEServer* pServer) {
 }
 
 void BluetoothControl::ImageData::onWrite(BLECharacteristic *pCharacteristic) {
-  String value = pCharacteristic->getValue();
+  if (parent->printStatus < 1) {
+    String value = pCharacteristic->getValue();
 
-  xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
+    xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
 
-  Serial.println(value.length());
+    Serial.println(value.length());
 
-  if (value.length() > 0) {
-      String allBinaryData = "";
-      Serial.println("Received data:");
-      for (size_t i = 0; i < value.length(); i++) {
-        Serial.printf("Byte %zu: 0x%02X\n", i, (unsigned char)value[i]);
-        String binaryValue = parent->hexToBinary((unsigned char)value[i]);
-        allBinaryData += binaryValue;
-        parent->countBytes += 1;
+    if (value.length() > 0) {
+        String allBinaryData = "";
+        Serial.println("Received data:");
+        for (size_t i = 0; i < value.length(); i++) {
+          Serial.printf("Byte %zu: 0x%02X\n", i, (unsigned char)value[i]);
+          String binaryValue = parent->hexToBinary((unsigned char)value[i]);
+          allBinaryData += binaryValue;
+          parent->countBytes += 1;
 
-        if (parent->countBytes % parent->widthOfImage == 0) {
-          allBinaryData += "\n";
+          if (parent->countBytes % parent->widthOfImage == 0) {
+            allBinaryData += "\n";
+          }
         }
-      }
-      //appendFile("/newImage.txt", allBinaryData.c_str());
-      allBinaryData = "";
-  }
+        file.appendFile("/gridData.txt", allBinaryData.c_str());
+        allBinaryData = "";
+    }
 
-  xSemaphoreGive(parent->bluetoothMutex);
+    xSemaphoreGive(parent->bluetoothMutex);
+  }
 }
 
 void BluetoothControl::statusOfPrint::onWrite(BLECharacteristic *pCharacteristic) {
-  xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
+  if (parent->printStatus > -1) {
+    xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
 
-  String value = pCharacteristic->getValue();
+    String value = pCharacteristic->getValue();
 
-  Serial.println((unsigned char)value[0]);
+    Serial.println((unsigned char)value[0]);
 
-  if ((unsigned char)value[0] == 0) { // pause
-    Serial.println("Got a zero");
-    parent->additionToPrintStatus = 0;
+    if ((unsigned char)value[0] == 0) { // pause
+      Serial.println("Got a zero");
+      parent->additionToPrintStatus = 0;
+    }
+    else if ((unsigned char)value[0] == 1) { // play
+      Serial.println("Got a one");
+      parent->additionToPrintStatus = 5;
+    }
+    else if ((unsigned char)value[0] == 2) { // stop
+      Serial.println("Got a two");
+      parent->printStatus = 0;
+    }
+
+    xSemaphoreGive(parent->bluetoothMutex);
   }
-  else if ((unsigned char)value[0] == 1) { // play
-    Serial.println("Got a one");
-    parent->additionToPrintStatus = 5;
-  }
-  else if ((unsigned char)value[0] == 2) { // stop
-    Serial.println("Got a two");
-    parent->printStatus = 0;
-  }
-
-  xSemaphoreGive(parent->bluetoothMutex);
 }
 
 
 
 void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
-  xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
+  if (parent->printStatus < 1) {
+    xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
 
     String value = pCharacteristic->getValue();
 
     uint32_t expectedBytes;
 
     if (value.length() == 6) {
-      // writeFile("/newImage.txt", "");
+      file.writeFile("/gridData.txt", "");
       parent->countBytes = 0;
           // Convert first 4 bytes into a 32-bit integer
       expectedBytes = ((uint32_t)(unsigned char)value[0] << 24) |
@@ -129,6 +134,7 @@ void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
     else if (value.length() == 1) {
       if (parent->countBytes == expectedBytes) {
         parent->isImageReceived = true;
+        parent->printStatus = 0;
         Serial.println("Success!");
       }
       else {
@@ -140,6 +146,7 @@ void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
     }
 
     xSemaphoreGive(parent->bluetoothMutex);
+  }
 }
 
 void BluetoothControl::updatePrintProgress(int percentage) {

@@ -4,10 +4,10 @@
 //#include <Arduino.h>
 #include <TMC2208Stepper.h>
 
-  #define RX1_PIN 19  // Define correct RX pin for ESP32 UART1
-  #define TX1_PIN 18  // Define correct TX pin for ESP32 UART1
-  #define RX2_PIN 15  // Define correct RX pin for ESP32 UART2
-  #define TX2_PIN 14  // Define correct TX pin for ESP32 UART2
+  #define RX1_PIN 14  // Define correct RX pin for ESP32 UART1
+  #define TX1_PIN 12  // Define correct TX pin for ESP32 UART1
+  #define RX2_PIN 18  // Define correct RX pin for ESP32 UART2
+  #define TX2_PIN 17  // Define correct TX pin for ESP32 UART2
 
   #define Current 125
   #define MicroStep 8
