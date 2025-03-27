@@ -1,16 +1,16 @@
 #include "FileControl.h"
 
 FileControl::FileControl()
-  : lineCount(0), forward(true) {}
+  : lineCount(0), forward(true) {} // runOnce(true) {}
 
 void FileControl::setupSD() {
-    if (!SD.begin()) {
+    if(!SD.begin()) {
         Serial.println("Card Mount Failed");
-        while (1);
+        //while (1);
     }
-    if (SD.cardType() == CARD_NONE) {
+    if(SD.cardType() == CARD_NONE) {
         Serial.println("No SD card attached");
-        while (1);
+        //while (1);
     }
 }
 
@@ -21,7 +21,7 @@ void FileControl::writeFile(const char* path, const char* message) {
 void FileControl::writeFile(fs::FS& fs, const char* path, const char* message) {
     Serial.printf("Writing file: %s\n", path);
     File file = fs.open(path, FILE_WRITE);
-    if (!file) {
+    if(!file) {
         Serial.println("Failed to open file for writing");
         return;
     }
@@ -36,7 +36,7 @@ void FileControl::appendFile(const char* path, const char* message) {
 void FileControl::appendFile(fs::FS& fs, const char* path, const char* message) {
     Serial.printf("Appending to file: %s\n", path);
     File file = fs.open(path, FILE_APPEND);
-    if (!file) {
+    if(!file) {
         Serial.println("Failed to open file for appending");
         return;
     }
@@ -45,24 +45,33 @@ void FileControl::appendFile(fs::FS& fs, const char* path, const char* message) 
 }
 
 int FileControl::processSDFile() {
+  Serial.println("Getting 12 lines from file");
   lineCount = 0;
 
   File dataFile = SD.open("gridData.txt");
-  if (!dataFile) {
+  if(!dataFile) {
     Serial.println("Error opening grid file!");
-    return lineCount;
+
+    // if(runOnce){
+    //   for(int i = 0; i < 12; i++){
+    //     lines[i] = "0101000011101010";
+    //     lineCount++;
+    //     Serial.println(lines[i] + "  " + lineCount);
+    //     delay(1000);
+    //   }
+    //   runOnce = false;
+    // }
+    // return lineCount;
   }
 
-  Serial.println("Processing dataFile.txt:");
-
   // Read file line by line
-  while (dataFile.available() && lineCount < 13) {
-    if (dataFile.available()) {
+  while(dataFile.available() && lineCount < 13) {
+    if(dataFile.available()) {
       String line = dataFile.readStringUntil('\n');  // Read one line from the file
       line.trim();  // Trim any extra spaces or newline characters
 
       // Skip any empty lines
-      if (line.length() == 0) {
+      if(line.length() == 0) {
         continue;
       }
 

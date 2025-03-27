@@ -16,6 +16,7 @@ private:
   BLECharacteristic *pCharacteristic3;
 
   bool deviceConnected = false;
+  bool isImageReceived = false;
 
   uint8_t batteryPercent = 100;
 
@@ -46,6 +47,14 @@ public:
 
   void debugTask(String msg);
   void statusMessages();
+
+  bool getDeviceConnected() const { return deviceConnected; }
+  bool getIsImageReceived() const { return isImageReceived; }
+  int16_t getAdditionToPrintStatus() const { return additionToPrintStatus; }
+  int16_t getPrintStatus() const { return printStatus; }
+  uint16_t getTotalRows() const { return heightOfImage; }
+
+  void updatePrintProgress(int percentage);
 
   class MyServerCallbacks : public BLEServerCallbacks {
     private:

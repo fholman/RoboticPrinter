@@ -38,6 +38,7 @@ void MotorControl::motorSetUp(){
   driver2.mstep_reg_select(1);
   driver2.mres(MicroStep);
 
+  Serial.println("Motors set up");
 }
 
 void MotorControl::horizontalMove() {
@@ -69,6 +70,7 @@ void MotorControl::verticleMove() {
 }
 
 void MotorControl::swapDirection() {
+  Serial.println("Swap Direction");
   if(shaftState) {
     driver2.shaft(false);
     shaftState = false;
@@ -79,6 +81,7 @@ void MotorControl::swapDirection() {
 }
 
 void MotorControl::driver2State() {
+  Serial.println("Motor State Changed");
   if(motor2State) {
     driver2.toff(0);
     motor2State = false;

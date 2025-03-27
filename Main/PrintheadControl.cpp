@@ -5,6 +5,7 @@ void PrintheadControl::printheadSetUp(){
     pinMode(nozzlePins[i], OUTPUT);
     digitalWrite(nozzlePins[i], LOW);
   }
+  Serial.println("Printhead set up");
 }
 
 void PrintheadControl::makeDot(uint8_t nozzle){

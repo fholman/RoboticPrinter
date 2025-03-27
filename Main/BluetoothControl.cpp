@@ -72,7 +72,7 @@ void BluetoothControl::ImageData::onWrite(BLECharacteristic *pCharacteristic) {
           allBinaryData += "\n";
         }
       }
-      // appendFile("/newImage.txt", allBinaryData.c_str());
+      //appendFile("/newImage.txt", allBinaryData.c_str());
       allBinaryData = "";
   }
 
@@ -128,6 +128,7 @@ void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
     }
     else if (value.length() == 1) {
       if (parent->countBytes == expectedBytes) {
+        parent->isImageReceived = true;
         Serial.println("Success!");
       }
       else {
@@ -139,6 +140,15 @@ void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
     }
 
     xSemaphoreGive(parent->bluetoothMutex);
+}
+
+void BluetoothControl::updatePrintProgress(int percentage) {
+  percentage = max(0, min(percentage, 100));    //Could be changed to any input you want for app
+  // Update print status
+  printStatus = percentage;
+  Serial.print("Print Progress: ");
+  Serial.print(percentage);
+  Serial.println("%");
 }
 
 void BluetoothControl::setupBluetooth() {

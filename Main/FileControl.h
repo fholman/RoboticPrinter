@@ -14,14 +14,16 @@
 class FileControl {
 
   private:
-  String lines[12];
   int lineCount;
-  bool forward;
 
   void writeFile(fs::FS &fs, const char *path, const char *message);
   void appendFile(fs::FS &fs, const char *path, const char *message);
 
   public:
+    bool forward;
+    // bool runOnce;
+    String lines[12];
+
     FileControl();
     void setupSD();
     int processSDFile();
