@@ -7,24 +7,34 @@
 #include <BLEServer.h>
 #include <BLECharacteristic.h>
 #include <BLE2902.h>
+#include "FileControl.h"
 
 class BluetoothControl {
 
 private:
 
+  FileControl& file;
+
   BLECharacteristic *pCharacteristic2;
   BLECharacteristic *pCharacteristic3;
 
   bool deviceConnected = false;
+  bool isImageReceived = false;
 
   uint8_t batteryPercent = 100;
 
-  // need to be clear what each print status means!
+  uint32_t expectedBytes;
+
+  // need to be clear what each print status means! Need to have a rethink on this variable
   // = -1 means there is no print loaded on the SD card
-  // = 0 means there is a print loaded on the SD card but it is not currently printed so can be overidden
+  // = 0 means there is a print loaded on the SD card but it is not currently printing so can be overidden
   // 1 - 100 means print is in progress (where 1 means just started and 100 means complete)
   int16_t printStatus = -1;
-  uint8_t additionToPrintStatus = 0;
+
+  // 0 = stopped
+  // 1 = paused
+  // 2 = play
+  uint8_t appStatus = 0;
 
   uint16_t widthOfImage;
   uint16_t heightOfImage;
@@ -39,13 +49,23 @@ private:
 
 
 public:
-  BluetoothControl() {
+  BluetoothControl(FileControl& f) : file(f) {
     bluetoothMutex = xSemaphoreCreateMutex();
+    heightOfImage = file.readHeight();
     setupBluetooth();
   }
 
   void debugTask(String msg);
-  void statusMessages();
+  void statusMessages(int status);
+  void setAppStatus();
+
+  bool getDeviceConnected() const { return deviceConnected; }
+  bool getIsImageReceived() const { return isImageReceived; }
+  int16_t getPrintStatus() const { return printStatus; }
+  uint8_t getAppStatus() const { return appStatus; }
+  uint16_t getTotalRows() const { return heightOfImage; }
+
+  void updatePrintProgress(int percentage);
 
   class MyServerCallbacks : public BLEServerCallbacks {
     private:

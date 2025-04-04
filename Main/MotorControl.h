@@ -4,10 +4,10 @@
 //#include <Arduino.h>
 #include <TMC2208Stepper.h>
 
-  #define RX1_PIN 19  // Define correct RX pin for ESP32 UART1
-  #define TX1_PIN 18  // Define correct TX pin for ESP32 UART1
-  #define RX2_PIN 15  // Define correct RX pin for ESP32 UART2
-  #define TX2_PIN 14  // Define correct TX pin for ESP32 UART2
+  #define RX1_PIN 14  // Define correct RX pin for ESP32 UART1
+  #define TX1_PIN 12  // Define correct TX pin for ESP32 UART1
+  #define RX2_PIN 18  // Define correct RX pin for ESP32 UART2
+  #define TX2_PIN 17  // Define correct TX pin for ESP32 UART2
 
   #define Current 125
   #define MicroStep 8
@@ -29,15 +29,16 @@ class MotorControl {
     const int stepPin4;
 
     bool shaftState;
-    bool motor2State;
 
   public:
     MotorControl(int step1, int step2, int step3, int step4);
     void motorSetUp();
-    void horizontalMove();
-    void verticleMove(); 
+    void horizontalMove(uint16_t speed);
+    void verticalMove(); 
     void swapDirection();
-    void driver2State();
+    void setShaftState();
+    void driverOn();
+    void driverOff();
 };
 
 #endif

@@ -67,37 +67,37 @@ uint16_t voltageReading = 0;
 
 // SD Card Management
 
-void writeFile(fs::FS &fs, const char *path, const char *message) {
-  // Serial.printf("Writing file: %s\n", path);
+// void writeFile(fs::FS &fs, const char *path, const char *message) {
+//   // Serial.printf("Writing file: %s\n", path);
 
-  File file = fs.open(path, FILE_WRITE);
-  if (!file) {
-    // Serial.println("Failed to open file for writing");
-    return;
-  }
-  if (file.print(message)) {
-    // Serial.println("File written");
-  } else {
-    // Serial.println("Write failed");
-  }
-  file.close();
-}
+//   File file = fs.open(path, FILE_WRITE);
+//   if (!file) {
+//     // Serial.println("Failed to open file for writing");
+//     return;
+//   }
+//   if (file.print(message)) {
+//     // Serial.println("File written");
+//   } else {
+//     // Serial.println("Write failed");
+//   }
+//   file.close();
+// }
 
-void appendFile(fs::FS &fs, const char *path, const char *message) {
-  // Serial.printf("Appending to file: %s\n", path);
+// void appendFile(fs::FS &fs, const char *path, const char *message) {
+//   // Serial.printf("Appending to file: %s\n", path);
 
-  File file = fs.open(path, FILE_APPEND);
-  if (!file) {
-    // Serial.println("Failed to open file for appending");
-    return;
-  }
-  if (file.print(message)) {
-    // Serial.println("Message appended");
-  } else {
-    // Serial.println("Append failed");
-  }
-  file.close();
-}
+//   File file = fs.open(path, FILE_APPEND);
+//   if (!file) {
+//     // Serial.println("Failed to open file for appending");
+//     return;
+//   }
+//   if (file.print(message)) {
+//     // Serial.println("Message appended");
+//   } else {
+//     // Serial.println("Append failed");
+//   }
+//   file.close();
+// }
 
 
 // Task 1: Debug terminal messages
@@ -133,6 +133,7 @@ void Task2(void *parameter) {
 // Server Callbacks to handle connection and disconnection
 class MyServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) {
+    Serial.println("COnnected");
     deviceConnected = true;
   }
 
@@ -149,9 +150,12 @@ class MyCallbacks : public BLECharacteristicCallbacks {
 
     xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
 
+    Serial.println(value.length());
+
     if (value.length() > 0) {
         String allBinaryData = "";
         for (size_t i = 0; i < value.length(); i++) {
+          Serial.printf("Byte %zu: 0x%02X\n", i, (unsigned char)value[i]);
           String binaryValue = hexToBinary((unsigned char)value[i]);
           allBinaryData += binaryValue;
           countBytes += 1;
@@ -160,7 +164,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
             allBinaryData += "\n";
           }
         }
-        appendFile(SD, "/newImage.txt", allBinaryData.c_str());
+        // appendFile(SD, "/newImage.txt", allBinaryData.c_str());
         allBinaryData = "";
     }
 
@@ -208,7 +212,7 @@ class MyCallbacks2 : public BLECharacteristicCallbacks {
     String value = pCharacteristic->getValue();
 
     if (value.length() == 6) {
-      writeFile(SD, "/newImage.txt", "");
+      // writeFile(SD, "/newImage.txt", "");
       countBytes = 0;
           // Convert first 4 bytes into a 32-bit integer
       expectedBytes = ((uint32_t)(unsigned char)value[0] << 24) |
@@ -223,6 +227,10 @@ class MyCallbacks2 : public BLECharacteristicCallbacks {
       heightOfImage = expectedBytes / widthOfImage;
     }
     else if (value.length() == 1) {
+      Serial.print("Expected Number of Bytes: ");
+      Serial.println(expectedBytes);
+      Serial.print("Received Number of Bytes: ");
+      Serial.println(countBytes);
       countBytes = 0;
     }
 
@@ -234,21 +242,37 @@ void setup() {
 
   // pinMode(voltagePin, input);
 
-  SPI.begin(sck, miso, mosi, cs);
+  // SPI.begin(sck, miso, mosi, cs);
 
-  if (!SD.begin(cs)) {
-    // Serial.println("Card Mount Failed");
-    while(1);
-  }
+  // if (!SD.begin(cs)) {
+  //   // Serial.println("Card Mount Failed");
+  //   while(1);
+  // }
 
-  if (SD.cardType() == CARD_NONE) {
-    // Serial.println("No SD card attached");
-    while(1);
-  }
+  // if (SD.cardType() == CARD_NONE) {
+  //   // Serial.println("No SD card attached");
+  //   while(1);
+  // }
+
+  Serial.begin(115200);
+
+  // if (!SD.begin()) {
+  //   Serial.println("Card Mount Failed");
+  //   while(1);
+  // }
+
+  // if (SD.cardType() == CARD_NONE) {
+  //   Serial.println("No SD card attached");
+  //   while(1);
+  // }
 
   BLEDevice::deinit(true);
 
+  delay(500);
+
   BLEDevice::init("RoboPrinter");
+  BLEDevice::setMTU(500);
+  Serial.printf("Requested MTU: %d\n", BLEDevice::getMTU());
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
   BLEService *pService = pServer->createService(SERVICE_UUID);
@@ -268,29 +292,30 @@ void setup() {
   pCharacteristic3 =
     pService->createCharacteristic(CHARACTERISTIC_UUID3, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_WRITE);
   pCharacteristic3->addDescriptor(new BLE2902());
-  pCharacteristic3->setCallbacks(new MyCallbacks1());
+  // pCharacteristic3->setCallbacks(new MyCallbacks1());
   pCharacteristic3->setValue("Third Characteristic");
 
 
   pService->start();
   // BLEAdvertising *pAdvertising = pServer->getAdvertising();  // this still is working for backward compatibility
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  BLEDevice::setMTU(400);
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);
   pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
   pAdvertising->setMinPreferred(0x12);
-  BLEDevice::startAdvertising();
+  //BLEDevice::startAdvertising();
+  pAdvertising->start();
+  Serial.println("here");
 
   // Create Task 1
-  xTaskCreate(
-    Task1,                  // Function to be executed
-    "Debug Terminal Task",       // Name of the task
-    2048,                   // Stack size in words
-    NULL,                   // Task input parameter
-    1,                      // Priority of the task
-    &Task1Handle            // Task handle
-  );
+  // xTaskCreate(
+  //   Task1,                  // Function to be executed
+  //   "Debug Terminal Task",       // Name of the task
+  //   2048,                   // Stack size in words
+  //   NULL,                   // Task input parameter
+  //   1,                      // Priority of the task
+  //   &Task1Handle            // Task handle
+  // );
 
   // Create Task 2
   xTaskCreate(

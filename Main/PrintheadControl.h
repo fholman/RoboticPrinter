@@ -6,10 +6,10 @@
 class PrintheadControl {
 
   private:
-    const uint8_t nozzlePins[12] = {30, 28, 22, 24, 26, 35, 36, 37, 34, 33, 32, 31};
+    const uint8_t nozzlePins[12] = {6, 5, 1, 2, 4, 38, 39, 40, 37, 36, 35, 7};
 
-    const uint8_t dotPause = 5;
-    const int dotPauseLong = 2000;
+    const uint8_t dotPause = 4;
+    const int dotPauseLong = 850;
 
   public:
     void printheadSetUp();

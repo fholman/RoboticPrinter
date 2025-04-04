@@ -26,7 +26,7 @@ class _StatusPageContentComponentState extends State<StatusPageContentComponent>
 
   Future<void> sendMessage(int msg) async {
     if (TheBluetoothService().isConnected.value) {
-      setState(() => this.status = msg);
+      //setState(() => this.status = msg);
 
       final characteristicUUID = Guid("48524cb9-9db9-4ce3-b263-85169799a6f3");
       BluetoothCharacteristic? targChar = await TheBluetoothService().charFinder(characteristicUUID);
@@ -81,7 +81,11 @@ class _StatusPageContentComponentState extends State<StatusPageContentComponent>
             ValueListenableBuilder<String>(
               valueListenable: TheBluetoothService().statusNotifier,
               builder: (context, statusNotifier, child) {
-                String progress = statusNotifier.split(',').last;
+                List<String> values = statusNotifier.split(',');
+                String progress;
+                progress = values.length == 3 ? values[1] : "-1";
+                status = values.length == 3 ? int.parse(values.last) : 0;
+                //status = int.parse(values.last);
                 return Column (
                   children: [
                     SizedBox(

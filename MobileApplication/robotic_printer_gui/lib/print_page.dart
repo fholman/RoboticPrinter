@@ -247,7 +247,9 @@ class _PrintPageContentComponentState extends State<PrintPageContentComponent> {
 
   Future<void> printImage() async {
     if (TheBluetoothService().isConnected.value) {
-      String progress = TheBluetoothService().statusNotifier.value.split(',').last;
+      List<String> values = TheBluetoothService().statusNotifier.value.split(',');
+      String progress;
+      progress = values.length == 3 ? values[1] : "-1";
       if (double.tryParse(progress) != null) {
         if (double.parse(progress) <= 0) {
           int w;
@@ -323,7 +325,7 @@ class _PrintPageContentComponentState extends State<PrintPageContentComponent> {
             // await targChar.write(byteArray.sublist(4, 6), withoutResponse: true); // width in number of bytes (not pixels!)
             // await Future.delayed(Duration(milliseconds: 50));
 
-            int chunkSize = 395;
+            int chunkSize = 490;
 
             for (int i = 6; i < byteArray.length; i += chunkSize) {
               // Get the next chunk of size 'chunkSize', but ensure we don't go past the end of the list
@@ -334,12 +336,13 @@ class _PrintPageContentComponentState extends State<PrintPageContentComponent> {
               print('Chunk starting at index $i: $chunk');
 
               await targChar.write(chunk, withoutResponse: true);
-              await Future.delayed(Duration(milliseconds: 150));
+              await Future.delayed(Duration(milliseconds: 100));
             }
 
             print("DONE");
-            await targChar2.write([1], withoutResponse: true); // this is how many bytes will be received
+            await targChar2.write([1], withoutResponse: true);
             await Future.delayed(Duration(milliseconds: 50));
+            print("ABOVE MESSAGE SENT");
 
             Navigator.push(
               context,

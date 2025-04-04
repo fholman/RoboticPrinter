@@ -65,13 +65,14 @@ class TheBluetoothService {
             try {
               await r.device.connect();
               print('Connected to ${r.device.name}');
+              // await Future.delayed(Duration(seconds: 7));
 
-              try {
-                await r.device.requestMtu(400);
-                print('MTU set to 255');
-              } catch (mtuError) {
-                print('Failed to set MTU: $mtuError');
-              }
+              // try {
+              //   await r.device.requestMtu(500);
+              //   print('MTU set to 500');
+              // } catch (mtuError) {
+              //   print('Failed to set MTU: $mtuError');
+              // }
 
               connectedDevice = r; // Store the connected device
               isConnected.value = true;
@@ -134,6 +135,13 @@ class TheBluetoothService {
       statusSubscription = connectedDevice!.device.state.listen((state) async {
         if (state == BluetoothDeviceState.connected) {
           print("Device is connected.");
+          await Future.delayed(Duration(seconds: 7));
+          try {
+            await connectedDevice!.device.requestMtu(500);
+            print('MTU set to 500');
+          } catch (mtuError) {
+            print('Failed to set MTU: $mtuError');
+          }
           await findAllCharacteristics();
           isConnected.value = true;
           if (debugSubscription == null) {
@@ -227,31 +235,6 @@ class TheBluetoothService {
 
     print("Target Characteristic Not Found");
     return null;
-
-    // try {
-    //   List<BluetoothService> services = await connectedDevice!.device.discoverServices();
-
-    //   for (BluetoothService service in services) {
-    //     if (service.uuid == serviceUUID) {
-    //       var characteristics = service.characteristics;
-    //       for(BluetoothCharacteristic c in characteristics) {
-    //         print(c.uuid);
-    //         if (c.uuid == characteristicUUID2) {
-    //           targChar = c;
-    //           print("Found Target Characteristic");
-    //           return targChar;
-    //         }
-    //       }
-    //     }
-    //     if (targChar != null) break;
-    //   }
-
-    // } catch (e) {
-    //   print("Error during service discovery: $e");
-    // }
-
-    // print("Target Characteristic Not Found");
-    // return null;
     
   }
 }
