@@ -17,6 +17,9 @@ TaskHandle_t Task_Status_Message;
 bool printDone = false;
 int totalPrintRows;
 
+const int ledPinBlue = 8;
+const int ledPinGreen = 16;
+
 FileControl fileControl;
 PrintheadControl printheadControl;
 MotorControl motorControl(21, 13, 11, 9);
@@ -52,7 +55,12 @@ void setup() {
 
   debugMutex = xSemaphoreCreateBinary();
 
-  delay(15000);
+  pinMode(ledPinBlue, OUTPUT);
+  pinMode(ledPinGreen, OUTPUT);
+  digitalWrite(ledPinBlue, LOW);
+  digitalWrite(ledPinGreen, LOW);
+
+  delay(5000);
 
   // xTaskCreate(MainFunctions, "Main", 8192, NULL, 2, &Task_Main);
   // xTaskCreate(BluetoothStatus, "Status", 8192, NULL, 1, &Task_Status);
@@ -87,7 +95,7 @@ void MainFunctions(void *param) {
   int linesRead = 0;
   int currentProgress = 0;
 
-  currentState = PRINTING;
+  currentState = STOPPED;
 
   // Serial.println("Right here");
 
@@ -112,18 +120,20 @@ void MainFunctions(void *param) {
           sendMessage("Stopped Section");
         }
         vTaskDelay(500 / portTICK_PERIOD_MS);
+        digitalWrite(ledPinGreen, LOW);
         // motorControl.driverOff();
         break;
       
-      case PAUSED:
-        stateOfApp = 0;
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-        // Serial.println("Paused");
-        // motorControl.driverOff();
-        break;
+      // case PAUSED:
+      //   stateOfApp = 0;
+      //   vTaskDelay(500 / portTICK_PERIOD_MS);
+      //   // Serial.println("Paused");
+      //   // motorControl.driverOff();
+      //   break;
 
       case PRINTING:
         stateOfApp = 1;
+        digitalWrite(ledPinGreen, HIGH);
         // Serial.println("Printing");
         linesRead = fileControl.processSDFile();
         // Serial.println("HERE");
@@ -158,6 +168,7 @@ void BluetoothStatus(void *param) {
 
   while(1) {
     if (bluetooth->getDeviceConnected()) {
+      digitalWrite(ledPinBlue, HIGH);
       bluetooth->statusMessages(stateOfApp);
 
       if(bluetooth->getAppStatus() == 0) {  // stopped
@@ -169,14 +180,19 @@ void BluetoothStatus(void *param) {
       }
       else if(bluetooth->getAppStatus() == 2) {  // Play
         totalPrintRows = bluetooth->getTotalRows();
-        motorControl.setShaftState();
+        if (bluetooth->getPrintStatus() == 0) motorControl.setShaftState();
+        bluetooth->updatePrintProgress(1);
         currentState = PRINTING;
       }
 
       bluetooth->setAppStatus();
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+    } else {
+    digitalWrite(ledPinBlue, HIGH);
+    vTaskDelay(1000/portTICK_PERIOD_MS);
+    digitalWrite(ledPinBlue, LOW);
+    vTaskDelay(1500/portTICK_PERIOD_MS);
     }
-    
-    vTaskDelay(2500/portTICK_PERIOD_MS);
   }
 }
 
@@ -217,6 +233,24 @@ void print(int lineCount){
           }
         }
       }
+      if (currentState == PAUSED) { 
+        stateOfApp = 0;
+        motorControl.driverOff();
+        while (currentState == PAUSED) {
+          digitalWrite(ledPinGreen, HIGH);
+          vTaskDelay(250 / portTICK_PERIOD_MS);
+          digitalWrite(ledPinGreen, LOW);
+          vTaskDelay(250 / portTICK_PERIOD_MS);
+        }
+        digitalWrite(ledPinGreen, HIGH);
+        motorControl.driverOn();
+        stateOfApp = 1;
+      }
+      if (currentState == STOPPED) {
+        motorControl.driverOff();
+        return;
+      }
+
       //vTaskResume(Task_Status);
       motorControl.horizontalMove(40);
     }
@@ -233,6 +267,24 @@ void print(int lineCount){
           }
         }
       }
+      if (currentState == PAUSED) { 
+        stateOfApp = 0;
+        motorControl.driverOff();
+        while (currentState == PAUSED) {
+          digitalWrite(ledPinGreen, HIGH);
+          vTaskDelay(250 / portTICK_PERIOD_MS);
+          digitalWrite(ledPinGreen, LOW);
+          vTaskDelay(250 / portTICK_PERIOD_MS);
+        }
+        digitalWrite(ledPinGreen, HIGH);
+        motorControl.driverOn();
+        stateOfApp = 1;
+      }
+      if (currentState == STOPPED) {
+        motorControl.driverOff();
+        return;
+      }
+
       //vTaskResume(Task_Status);
       motorControl.horizontalMove(40);
     }
