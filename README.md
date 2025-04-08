@@ -13,8 +13,9 @@ This project focuses on the development of a multifunctional portable printer ro
 - **Dr. Cheng Wang**
 - **Xie Dong**
 
-## University
+## Universities
 **Heriot-Watt University, Edinburgh, United Kingdom**  
+**Edinburgh University, Edinburgh, United Kingdom**
 **Degree**: Master of Engineering in Robotics, Autonomous and Interactive Systems
 
 ## App Features
