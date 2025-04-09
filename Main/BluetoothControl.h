@@ -21,7 +21,7 @@ private:
   bool deviceConnected = false;
   bool isImageReceived = false;
 
-  uint8_t batteryPercent = 100;
+  uint8_t batteryPercent;
 
   uint32_t expectedBytes;
 
@@ -58,6 +58,7 @@ public:
   void debugTask(String msg);
   void statusMessages(int status);
   void setAppStatus();
+  void setBatteryPercentage();
 
   bool getDeviceConnected() const { return deviceConnected; }
   bool getIsImageReceived() const { return isImageReceived; }

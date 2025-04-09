@@ -30,22 +30,40 @@ void BluetoothControl::debugTask(String msg) {
 void BluetoothControl::statusMessages(int status) {
   if (deviceConnected == true) {
     xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
+    setBatteryPercentage();
     // Serial.println("Status Message");
     String msg = String(batteryPercent) + "," + String(printStatus) + "," + String(status);
     pCharacteristic3->setValue(msg);
     pCharacteristic3->notify();
-    if (batteryPercent == 100) {
-      batteryPercent = 95;
-    }
-    else {
-      batteryPercent = 100;
-    }
     xSemaphoreGive(bluetoothMutex);
   }
 }
 
 void BluetoothControl::setAppStatus() {
   appStatus = 3;
+}
+
+void BluetoothControl::setBatteryPercentage() {
+  int pin = A10;
+  float Vref = 3.3;
+  float R1 = 1000000.0;
+  float R2 = 100000.0;
+  float Vmin = 3.5;  // Min battery voltage
+  float Vmax = 4.2;  // Max battery voltage
+  float gammaMax = 3.0;
+  float gammaMin = 0.5;
+
+  int adcValue = analogRead(pin);
+  float Vout = (adcValue / 1023.0) * Vref;  // Output voltage after voltage divider
+  float Vbattery = Vout * (R1 + R2) / R2;  // Reversed voltage divider equation
+
+  float gamma = gammaMin + (gammaMax - gammaMin) * (Vbattery - Vmin) / (Vmax - Vmin);
+  float batteryPercentage = pow((Vbattery - Vmin) / (Vmax - Vmin), gamma) * 100;
+
+  if (batteryPercentage < 0) batteryPercentage = 0;
+  if (batteryPercentage > 100) batteryPercentage = 100;
+
+  batteryPercent = batteryPercentage;
 }
 
 void BluetoothControl::MyServerCallbacks::onConnect(BLEServer* pServer) {
