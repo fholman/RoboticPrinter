@@ -4,6 +4,7 @@
 #include <SD.h>
 #include <TMC2208Stepper.h>
 #include <freertos/FreeRTOS.h>
+#include "esp_heap_caps.h"
 
 #include "BluetoothControl.h"
 #include "FileControl.h"
@@ -100,7 +101,6 @@ void MainFunctions(void *param) {
   // Serial.println("Right here");
 
   while(1) {
-    sendMessage("Looping Again");
     // Serial.println("Main Loop");
     switch(currentState) {
       case STOPPED:
@@ -117,19 +117,11 @@ void MainFunctions(void *param) {
           }
 
           linesRead = 0;
-          sendMessage("Stopped Section");
         }
         vTaskDelay(500 / portTICK_PERIOD_MS);
         digitalWrite(ledPinGreen, LOW);
         // motorControl.driverOff();
         break;
-      
-      // case PAUSED:
-      //   stateOfApp = 0;
-      //   vTaskDelay(500 / portTICK_PERIOD_MS);
-      //   // Serial.println("Paused");
-      //   // motorControl.driverOff();
-      //   break;
 
       case PRINTING:
         stateOfApp = 1;
@@ -139,6 +131,14 @@ void MainFunctions(void *param) {
         // Serial.println("HERE");
         if(linesRead > 0) {
           // Serial.println("First Row");
+
+          // vTaskDelay(1000 / portTICK_PERIOD_MS);
+          // UBaseType_t highWaterMark = uxTaskGetStackHighWaterMark(Task_Main); // NULL = current task
+          // sendMessage("Main task free stack left after processing : " + String(highWaterMark));
+          // vTaskDelay(1000 / portTICK_PERIOD_MS);
+          // size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT);  // You can specify other capabilities
+          // sendMessage("Free Heap after processing : " + String(freeHeap));
+          // vTaskDelay(1000 / portTICK_PERIOD_MS);
 
           print(linesRead);
 
@@ -155,7 +155,14 @@ void MainFunctions(void *param) {
         }
         break;
     }
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+
+    // UBaseType_t highWaterMark = uxTaskGetStackHighWaterMark(NULL); // NULL = current task
+    // sendMessage("Main task free stack left : " + String(highWaterMark));
+    // // vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT);  // You can specify other capabilities
+    // sendMessage("Free Heap : " + String(freeHeap));
+
+    vTaskDelay(50 / portTICK_PERIOD_MS); // should only have one 50ms delay here
   }
 }
 
@@ -174,26 +181,30 @@ void BluetoothStatus(void *param) {
       if(bluetooth->getAppStatus() == 0) {  // stopped
         currentState = STOPPED;
         fileControl.resetFilePosition();
+        sendMessage("Device has been stopped ... ");
       }
       else if(bluetooth->getAppStatus() == 1) {  // Paused
         currentState = PAUSED;
+        sendMessage("Device has been paused ... ");
       }
       else if(bluetooth->getAppStatus() == 2) {  // Play
         totalPrintRows = bluetooth->getTotalRows();
         if (bluetooth->getPrintStatus() == 0) motorControl.setShaftState();
         bluetooth->updatePrintProgress(1);
         currentState = PRINTING;
+        sendMessage("Device has begun printing ...");
       }
 
       bluetooth->setAppStatus();
       vTaskDelay(1000/portTICK_PERIOD_MS);
     } else {
-    digitalWrite(ledPinBlue, HIGH);
-    vTaskDelay(1000/portTICK_PERIOD_MS);
-    digitalWrite(ledPinBlue, LOW);
-    vTaskDelay(1500/portTICK_PERIOD_MS);
+      digitalWrite(ledPinBlue, HIGH);
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+      digitalWrite(ledPinBlue, LOW);
+      vTaskDelay(1500/portTICK_PERIOD_MS);
     }
   }
+
 }
 
 /*
@@ -206,7 +217,6 @@ void BluetoothDebug(void *param) {
   while(1) {
     xSemaphoreTake(debugMutex, portMAX_DELAY);
     bluetooth->debugTask(debugMessage);
-    // Serial.println("Sending debug message : " + debugMessage);
   }
 }
 
@@ -221,10 +231,22 @@ void print(int lineCount){
 
   motorControl.driverOn();
 
+  sendMessage("Device is printing a row");
+  // vTaskDelay(1000 / portTICK_PERIOD_MS);
+
   if (fileControl.forward) {
     motorControl.swapDirection();
     // Read column by column from the first to the last
     for(size_t col = 0; col < fileControl.lines[0].length(); col++) {
+      // UBaseType_t highWaterMark = uxTaskGetStackHighWaterMark(Task_Main); // NULL = current task
+      // vTaskDelay(1000 / portTICK_PERIOD_MS);
+      // sendMessage("Main task free stack left : " + String(highWaterMark));
+      // vTaskDelay(1000 / portTICK_PERIOD_MS);
+      // sendMessage("Image Width : " + String(fileControl.lines[0].length()));
+      // vTaskDelay(1000 / portTICK_PERIOD_MS);
+      // size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT);  // You can specify other capabilities
+      // sendMessage("Free Heap : " + String(freeHeap));
+      // delay(1000000);
       //vTaskSuspend(Task_Status);
       for (int i=0; i<2; i++) {
         for(int row = 0; row < lineCount; row++) {
@@ -292,6 +314,8 @@ void print(int lineCount){
   motorControl.driverOff();
 
   motorControl.verticalMove();
+
+  sendMessage("Device has finished printing a row");
 
   // Alternate direction
   fileControl.forward = !fileControl.forward;

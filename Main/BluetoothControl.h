@@ -8,6 +8,7 @@
 #include <BLECharacteristic.h>
 #include <BLE2902.h>
 #include "FileControl.h"
+#include "esp_heap_caps.h"
 
 class BluetoothControl {
 
@@ -21,7 +22,12 @@ private:
   bool deviceConnected = false;
   bool isImageReceived = false;
 
-  uint8_t batteryPercent;
+  uint8_t batteryPercent = 100;
+
+  unsigned long startTime = 0;
+
+  unsigned long myTimer = 0;
+  uint32_t counter = 0;
 
   uint32_t expectedBytes;
 
@@ -47,6 +53,11 @@ private:
 
   static BluetoothControl* instance;
 
+  String allBinaryData = "";
+
+  unsigned int sizeTest;
+  unsigned int sizeTest2;
+
 
 public:
   BluetoothControl(FileControl& f) : file(f) {
@@ -60,11 +71,40 @@ public:
   void setAppStatus();
   void setBatteryPercentage();
 
-  bool getDeviceConnected() const { return deviceConnected; }
-  bool getIsImageReceived() const { return isImageReceived; }
-  int16_t getPrintStatus() const { return printStatus; }
-  uint8_t getAppStatus() const { return appStatus; }
-  uint16_t getTotalRows() const { return heightOfImage; }
+  bool getDeviceConnected() const {
+    xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
+    bool val = deviceConnected;
+    xSemaphoreGive(bluetoothMutex);
+    return val;
+  }
+
+  bool getIsImageReceived() const {
+    xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
+    bool val = isImageReceived;
+    xSemaphoreGive(bluetoothMutex);
+    return val;
+  }
+
+  int16_t getPrintStatus() const {
+    xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
+    int16_t val = printStatus;
+    xSemaphoreGive(bluetoothMutex);
+    return val;
+  }
+
+  uint8_t getAppStatus() const {
+    xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
+    uint8_t val = appStatus;
+    xSemaphoreGive(bluetoothMutex);
+    return val;
+  }
+
+  uint16_t getTotalRows() const {
+    xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
+    uint16_t val = heightOfImage;
+    xSemaphoreGive(bluetoothMutex);
+    return val;
+  }
 
   void updatePrintProgress(int percentage);
 

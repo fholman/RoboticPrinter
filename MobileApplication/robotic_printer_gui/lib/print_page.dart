@@ -319,13 +319,13 @@ class _PrintPageContentComponentState extends State<PrintPageContentComponent> {
 
             print(byteArray.sublist(0, 6));
             await targChar2.write(byteArray.sublist(0, 6), withoutResponse: true); // this is how many bytes will be received
-            await Future.delayed(Duration(milliseconds: 50));
+            await Future.delayed(Duration(milliseconds: 12));
 
             // print(byteArray.sublist(4, 6));
             // await targChar.write(byteArray.sublist(4, 6), withoutResponse: true); // width in number of bytes (not pixels!)
             // await Future.delayed(Duration(milliseconds: 50));
 
-            int chunkSize = 490;
+            int chunkSize = 445;
 
             for (int i = 6; i < byteArray.length; i += chunkSize) {
               // Get the next chunk of size 'chunkSize', but ensure we don't go past the end of the list
@@ -336,12 +336,12 @@ class _PrintPageContentComponentState extends State<PrintPageContentComponent> {
               print('Chunk starting at index $i: $chunk');
 
               await targChar.write(chunk, withoutResponse: true);
-              await Future.delayed(Duration(milliseconds: 100));
+              await Future.delayed(Duration(milliseconds: 12));
             }
 
             print("DONE");
             await targChar2.write([1], withoutResponse: true);
-            await Future.delayed(Duration(milliseconds: 50));
+            await Future.delayed(Duration(milliseconds: 12));
             print("ABOVE MESSAGE SENT");
 
             Navigator.push(

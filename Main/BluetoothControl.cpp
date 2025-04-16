@@ -9,13 +9,12 @@
 #define CHARACTERISTIC_UUID3 "48524cb9-9db9-4ce3-b263-85169799a6f3" // used to send status messages and receive play, pause, and print messages
 
 String BluetoothControl::hexToBinary(unsigned char byteValue) {
-  String binary = "";
-  // Loop through each bit
+  char binary[9]; // 8 bits + null terminator
   for (int i = 7; i >= 0; i--) {
-    // Check if the bit is set (1) or not (0) and append '1' or '0'
-    binary += (byteValue & (1 << i)) ? '1' : '0';
+    binary[7 - i] = (byteValue & (1 << i)) ? '1' : '0';
   }
-  return binary;  // Return the 8-bit binary representation as a string
+  binary[8] = '\0';
+  return String(binary); // Construct once
 }
 
 void BluetoothControl::debugTask(String msg) {
@@ -30,7 +29,7 @@ void BluetoothControl::debugTask(String msg) {
 void BluetoothControl::statusMessages(int status) {
   if (deviceConnected == true) {
     xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
-    setBatteryPercentage();
+    // setBatteryPercentage();
     // Serial.println("Status Message");
     String msg = String(batteryPercent) + "," + String(printStatus) + "," + String(status);
     pCharacteristic3->setValue(msg);
@@ -40,30 +39,32 @@ void BluetoothControl::statusMessages(int status) {
 }
 
 void BluetoothControl::setAppStatus() {
+  xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
   appStatus = 3;
+  xSemaphoreGive(bluetoothMutex);
 }
 
 void BluetoothControl::setBatteryPercentage() {
-  int pin = A10;
-  float Vref = 3.3;
-  float R1 = 1000000.0;
-  float R2 = 100000.0;
-  float Vmin = 3.5;  // Min battery voltage
-  float Vmax = 4.2;  // Max battery voltage
-  float gammaMax = 3.0;
-  float gammaMin = 0.5;
+  // int pin = A10;
+  // float Vref = 3.3;
+  // float R1 = 1000000.0;
+  // float R2 = 100000.0;
+  // float Vmin = 3.5;  // Min battery voltage
+  // float Vmax = 4.2;  // Max battery voltage
+  // float gammaMax = 3.0;
+  // float gammaMin = 0.5;
 
-  int adcValue = analogRead(pin);
-  float Vout = (adcValue / 1023.0) * Vref;  // Output voltage after voltage divider
-  float Vbattery = Vout * (R1 + R2) / R2;  // Reversed voltage divider equation
+  // int adcValue = analogRead(pin);
+  // float Vout = (adcValue / 1023.0) * Vref;  // Output voltage after voltage divider
+  // float Vbattery = Vout * (R1 + R2) / R2;  // Reversed voltage divider equation
 
-  float gamma = gammaMin + (gammaMax - gammaMin) * (Vbattery - Vmin) / (Vmax - Vmin);
-  float batteryPercentage = pow((Vbattery - Vmin) / (Vmax - Vmin), gamma) * 100;
+  // float gamma = gammaMin + (gammaMax - gammaMin) * (Vbattery - Vmin) / (Vmax - Vmin);
+  // float batteryPercentage = pow((Vbattery - Vmin) / (Vmax - Vmin), gamma) * 100;
 
-  if (batteryPercentage < 0) batteryPercentage = 0;
-  if (batteryPercentage > 100) batteryPercentage = 100;
+  // if (batteryPercentage < 0) batteryPercentage = 0;
+  // if (batteryPercentage > 100) batteryPercentage = 100;
 
-  batteryPercent = batteryPercentage;
+  // batteryPercent = batteryPercentage;
 }
 
 void BluetoothControl::MyServerCallbacks::onConnect(BLEServer* pServer) {
@@ -81,28 +82,23 @@ void BluetoothControl::ImageData::onWrite(BLECharacteristic *pCharacteristic) {
   if (parent->printStatus < 1) {
     String value = pCharacteristic->getValue();
 
-    // Serial.println(value.length());
-
     if (value.length() > 0) {
-      String allBinaryData = "";
       // Serial.println("Received data:");
       for (size_t i = 0; i < value.length(); i++) {
         // Serial.printf("Byte %zu: 0x%02X\n", i, (unsigned char)value[i]);
         String binaryValue = parent->hexToBinary((unsigned char)value[i]);
-        allBinaryData += binaryValue;
+        parent->allBinaryData += binaryValue;
         parent->countBytes += 1;
 
         if (parent->countBytes % parent->widthOfImage == 0) {
-          allBinaryData += "\n";
+          parent->allBinaryData += "\n";
         }
       }
-      parent->file.appendFile("/image.txt", allBinaryData.c_str());
-      allBinaryData = "";
+
+      parent->file.appendFile("/image.txt", parent->allBinaryData.c_str());
+      //parent->myTimer = ( parent->myTimer * (parent->counter - 1) + (micros() - parent->startTime) ) / parent->counter;
+      parent->allBinaryData = "";
     }
-
-    // Serial.println("End Of Statement");
-
-    // xSemaphoreGive(parent->bluetoothMutex);
   }
 }
 
@@ -111,8 +107,6 @@ void BluetoothControl::statusOfPrint::onWrite(BLECharacteristic *pCharacteristic
     xSemaphoreTake(parent->bluetoothMutex, portMAX_DELAY);
 
     String value = pCharacteristic->getValue();
-
-    //Serial.println((unsigned char)value[0]);
 
     if ((unsigned char)value[0] == 0) { // pause
       parent->appStatus = 1;
@@ -156,9 +150,17 @@ void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
       parent->heightOfImage = parent->expectedBytes / parent->widthOfImage;
 
       parent->file.openFile("/image.txt", 0);
+
+      parent->startTime = micros();
     }
     else if (value.length() == 1) {
       xSemaphoreGive(parent->bluetoothMutex);
+      parent->debugTask("Bytes : " + String(parent->expectedBytes));
+      parent->myTimer = micros() - parent->startTime;
+      parent->debugTask("Time : " + String(parent->myTimer));
+      parent->debugTask("Counter : " + String(parent->counter));
+      size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT);  // You can specify other capabilities
+      parent->debugTask("Heap : " + String(freeHeap));
       // Serial.println("Expected");
       // Serial.println(parent->expectedBytes);
       // Serial.println("Counted");
@@ -167,10 +169,10 @@ void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
         parent->isImageReceived = true;
         parent->printStatus = 0;
         parent->file.writeFile("/imageHeight.txt", String(parent->heightOfImage).c_str());
-        // Serial.println("Success!");
+        parent->debugTask("SUCCESS!");
       }
       else {
-        // Serial.println("Failure");
+        parent->debugTask("FAILED!");
         parent->file.writeFile("/image.txt", "");
         parent->file.writeFile("/imageHeight.txt", "0");
       }
@@ -184,7 +186,9 @@ void BluetoothControl::imageInfo::onWrite(BLECharacteristic *pCharacteristic) {
 }
 
 void BluetoothControl::updatePrintProgress(int percentage) {
+  xSemaphoreTake(bluetoothMutex, portMAX_DELAY);
   printStatus = percentage;
+  xSemaphoreGive(bluetoothMutex);
 }
 
 void BluetoothControl::setupBluetooth() {
@@ -196,7 +200,7 @@ void BluetoothControl::setupBluetooth() {
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
   BLECharacteristic *pCharacteristic1 =
-    pService->createCharacteristic(CHARACTERISTIC_UUID1, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    pService->createCharacteristic(CHARACTERISTIC_UUID1, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   pCharacteristic1->setCallbacks(new ImageData(this));
   pCharacteristic1->setValue("First Characteristic");
 
@@ -214,7 +218,7 @@ void BluetoothControl::setupBluetooth() {
 
   pService->start();
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  BLEDevice::setMTU(500);
+  BLEDevice::setMTU(450);
   // Serial.println("MTU SET");
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);

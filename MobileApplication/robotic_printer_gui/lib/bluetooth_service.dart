@@ -137,7 +137,7 @@ class TheBluetoothService {
           print("Device is connected.");
           await Future.delayed(Duration(seconds: 7));
           try {
-            await connectedDevice!.device.requestMtu(500);
+            await connectedDevice!.device.requestMtu(450);
             print('MTU set to 500');
           } catch (mtuError) {
             print('Failed to set MTU: $mtuError');
