@@ -35,6 +35,8 @@ String debugMessage = "Starting System ... ";
 
 portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
 
+uint16_t testSpeed = 15;
+
 enum PrinterState {
   PRINTING,
   PAUSED,
@@ -69,6 +71,8 @@ void setup() {
 
   // xTaskCreate(TestFunctions, "Main", 4096, NULL, 1, &Task_Main);
 
+  // xTaskCreatePinnedToCore(TestFunctions, "Main", 4096, NULL, 2, &Task_Main, 1);
+
   xTaskCreatePinnedToCore(MainFunctions, "Main", 4096, NULL, 2, &Task_Main, 1);
   xTaskCreatePinnedToCore(BluetoothStatus, "Status", 4096, NULL, 1, &Task_Status, 0);
   xTaskCreatePinnedToCore(BluetoothDebug, "Status_Message", 4096, NULL, 1, &Task_Status_Message, 0);
@@ -85,8 +89,16 @@ void TestFunctions(void *param) {
 
   while(1) {
 
+    motorControl.driverOn();
 
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // 3 horizontal movements to start moving
+
+    motorControl.swapDirection();
+
+    for (int i=0; i<10; i++) {
+      motorControl.horizontalMove(40);  
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
   }
 }
 
@@ -150,6 +162,7 @@ void MainFunctions(void *param) {
           bluetooth->updatePrintProgress(progressPercentage);
         } else {
           currentState = STOPPED;
+          motorControl.setShaftState();
           fileControl.resetFilePosition();
           // Serial.println("Print complete");
         }
@@ -189,7 +202,7 @@ void BluetoothStatus(void *param) {
       }
       else if(bluetooth->getAppStatus() == 2) {  // Play
         totalPrintRows = bluetooth->getTotalRows();
-        if (bluetooth->getPrintStatus() == 0) motorControl.setShaftState();
+        // if (bluetooth->getPrintStatus() == 0) motorControl.setShaftState();
         bluetooth->updatePrintProgress(1);
         currentState = PRINTING;
         sendMessage("Device has begun printing ...");
@@ -229,6 +242,8 @@ void sendMessage(String msg) {
 
 void print(int lineCount){
 
+  motorControl.verticalMove(testSpeed);
+
   motorControl.driverOn();
 
   sendMessage("Device is printing a row");
@@ -236,6 +251,7 @@ void print(int lineCount){
 
   if (fileControl.forward) {
     motorControl.swapDirection();
+    motorControl.horizontalMove(testSpeed);
     // Read column by column from the first to the last
     for(size_t col = 0; col < fileControl.lines[0].length(); col++) {
       // UBaseType_t highWaterMark = uxTaskGetStackHighWaterMark(Task_Main); // NULL = current task
@@ -253,7 +269,11 @@ void print(int lineCount){
           if(col < fileControl.lines[row].length() && fileControl.lines[row][col] == '1') {
             printheadControl.makeDot(row);
           }
+          else {
+            delayMicroseconds(8);
+          }
         }
+        delayMicroseconds(800);
       }
       if (currentState == PAUSED) { 
         stateOfApp = 0;
@@ -274,10 +294,11 @@ void print(int lineCount){
       }
 
       //vTaskResume(Task_Status);
-      motorControl.horizontalMove(40);
+      motorControl.horizontalMove(testSpeed);
     }
   } else {
     motorControl.swapDirection();
+    motorControl.horizontalMove(testSpeed);
     // Read column by column from the last to the first
     int length = fileControl.lines[0].length();
     for(int col = length - 1; col >= 0; col--) {
@@ -286,6 +307,9 @@ void print(int lineCount){
         for(int row = lineCount - 1; row >= 0; row--) {
           if(col < fileControl.lines[row].length() && fileControl.lines[row][col] == '1') {
             printheadControl.makeDot(row);
+          }
+          else {
+            delayMicroseconds(854);
           }
         }
       }
@@ -308,12 +332,12 @@ void print(int lineCount){
       }
 
       //vTaskResume(Task_Status);
-      motorControl.horizontalMove(40);
+      motorControl.horizontalMove(testSpeed);
     }
   }
   motorControl.driverOff();
 
-  motorControl.verticalMove();
+  // motorControl.verticalMove();
 
   sendMessage("Device has finished printing a row");
 

@@ -34,7 +34,7 @@ class MotorControl {
     MotorControl(int step1, int step2, int step3, int step4);
     void motorSetUp();
     void horizontalMove(uint16_t speed);
-    void verticalMove(); 
+    void verticalMove(uint16_t speed); 
     void swapDirection();
     void setShaftState();
     void driverOn();

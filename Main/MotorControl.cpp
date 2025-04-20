@@ -2,14 +2,14 @@
 #include <TMC2208Stepper.h>
 
 MotorControl::MotorControl(int step1, int step2, int step3, int step4)
-  : stepPin1(step1), stepPin2(step2), stepPin3(step3), stepPin4(step4),
+  : stepPin1(step3), stepPin2(step4), stepPin3(step1), stepPin4(step2),
     TMC_Serial1(1), TMC_Serial2(2),
     driver(&TMC_Serial1), driver2(&TMC_Serial2), 
-    shaftState(true) {}
+    shaftState(false) {}
 
 void MotorControl::motorSetUp(){
-  TMC_Serial1.begin(115200, SERIAL_8N1, RX1_PIN, TX1_PIN);
-  TMC_Serial2.begin(115200, SERIAL_8N1, RX2_PIN, TX2_PIN);
+  TMC_Serial1.begin(115200, SERIAL_8N1, RX2_PIN, TX2_PIN);
+  TMC_Serial2.begin(115200, SERIAL_8N1, RX1_PIN, TX1_PIN);
 
   driver.push();
   driver2.push(); 
@@ -41,7 +41,7 @@ void MotorControl::motorSetUp(){
 }
 
 void MotorControl::setShaftState() {
-  shaftState = true;
+  shaftState = false;
 }
 
 // 1:298 = 14 steps a pixel - 14 steps horizontally / 170 steps vertically
@@ -59,7 +59,7 @@ void MotorControl::horizontalMove(uint16_t speed) {
   }
 }
 
-void MotorControl::verticalMove() {
+void MotorControl::verticalMove(uint16_t speed) {
   delay(5);
   driver.toff(0);
   driver2.toff(5);
@@ -71,7 +71,7 @@ void MotorControl::verticalMove() {
     delayMicroseconds(1000);
     digitalWrite(stepPin1,LOW); 
     digitalWrite(stepPin2,LOW);
-    delay(50); // by changing this time delay between the steps we can change the rotation speed
+    delay(speed); // by changing this time delay between the steps we can change the rotation speed
   }
 
   delay(5);
@@ -82,7 +82,7 @@ void MotorControl::verticalMove() {
 void MotorControl::swapDirection() {
   driver.shaft(!shaftState);
 
-  for (int i=0; i<8; i++) {
+  for (int i=0; i<3; i++) {
     horizontalMove(40);
   }
 
