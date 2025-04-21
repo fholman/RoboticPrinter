@@ -42,19 +42,19 @@ This project focuses on the development of a multifunctional portable printer ro
   - Android app (built using Flutter and VSCode)
   - MCU main program (ESP32 board using ArduinoIDE)
 
-📦 Multifunctional-Portable-Printer-Robot
-├── 📁 [Archive](./Archive)  
-│   └── Deprecated or legacy files from earlier development phases.
-├── 📁 [MCU](./MCU)  
-│   └── Firmware code for the ESP32 microcontroller (Arduino-based).
-├── 📁 [Main](./Main)  
-│   └── Main control logic, coordination scripts, or shared components.
-├── 📁 [MobileApplication/robotic_printer_gui](./MobileApplication/robotic_printer_gui)  
-│   └── Source code for the Android app developed using Flutter.
-├── 📁 [Tests](./Tests)  
-│   └── Testing scripts and logs for software and hardware validation.
-└── 📄 [README.md](./README.md)  
-    └── Project overview, team info, features, and documentation.
+## Repository Structure
+[Archive](./Archive)  
+└── Legacy files from earlier development phases.
+[MCU](./MCU)  
+└── 
+[Main](./Main)  
+└── Main control logic code for the ESP32 microcontroller (Arduino-based).
+[MobileApplication/robotic_printer_gui](./MobileApplication/robotic_printer_gui)  
+└── Source code for the Android app developed using Flutter.
+[Tests](./Tests)  
+└── Testing scripts and logs for software and hardware validation.
+[README.md](./README.md)  
+└── Project overview, team info, features, and documentation.
 
 ## Getting Started
 To get started with the project:
