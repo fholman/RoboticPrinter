@@ -52,7 +52,7 @@ Main control logic code for the ESP32 microcontroller (Arduino-based).
 - [MobileApplication/robotic_printer_gui](./MobileApplication/robotic_printer_gui)  
 Source code for the Android app developed using Flutter.
 - [Tests](./Tests)  
-Testing scripts and logs for software and hardware validation.
+Testing scripts for software and hardware validation.
 - [README.md](./README.md)  
 Project overview, team info, features, and documentation.
 
