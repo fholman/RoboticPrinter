@@ -44,17 +44,17 @@ This project focuses on the development of a multifunctional portable printer ro
 
 ## Repository Structure
 - [Archive](./Archive)  
-└── Legacy files from earlier development phases.
+Legacy files from earlier development phases.
 - [MCU](./MCU)  
-└── 
+
 - [Main](./Main)  
-└── Main control logic code for the ESP32 microcontroller (Arduino-based).
+Main control logic code for the ESP32 microcontroller (Arduino-based).
 - [MobileApplication/robotic_printer_gui](./MobileApplication/robotic_printer_gui)  
-└── Source code for the Android app developed using Flutter.
+Source code for the Android app developed using Flutter.
 - [Tests](./Tests)  
-└── Testing scripts and logs for software and hardware validation.
+Testing scripts and logs for software and hardware validation.
 - [README.md](./README.md)  
-└── Project overview, team info, features, and documentation.
+Project overview, team info, features, and documentation.
 
 ## Getting Started
 To get started with the project:
