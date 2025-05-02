@@ -59,7 +59,7 @@ void BluetoothControl::setBatteryPercentage() {
   float batteryPercentage = 0;
 
   adcValue = analogRead(voltagePin); // Voltage from 0 to boards
-  voltage = ((adcValue * Vref) / 1000) * 11;  // Divide by 1000 for Volts - * 11 for voltage divider
+  voltage = ((adcValue * Vref) / 1024) * 11;  // Divide by 1024 for Volts - * 11 for voltage divider (Note: might be 4096 not 1024 if we are getting dud values
 
   batteryPercentage = ((voltage - Vmin) / (Vmax - Vmin)) * 100;
 
