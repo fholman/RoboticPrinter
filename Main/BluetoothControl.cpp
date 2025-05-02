@@ -47,7 +47,7 @@ void BluetoothControl::setAppStatus() {
 void BluetoothControl::setBatteryPercentage() {
   // Uncomment gamma parts for battery percentage curves
   const int voltagePin = A10;
-  const float Vref = 3.3;  // Can read voltage of 3.3V rail with voltage divider then divide by 1024. Should be 3.3V but could use 5V like arduino systems use
+  const float Vref = 3.3;  // Can read voltage of 3.3V rail with voltage divider then divide by 1024.
   const float Vmax = 12.6;
   const float Vmin = 9;
 
