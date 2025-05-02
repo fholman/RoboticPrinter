@@ -45,26 +45,28 @@ void BluetoothControl::setAppStatus() {
 }
 
 void BluetoothControl::setBatteryPercentage() {
-  // int pin = A10;
-  // float Vref = 3.3;
-  // float R1 = 1000000.0;
-  // float R2 = 100000.0;
-  // float Vmin = 3.5;  // Min battery voltage
-  // float Vmax = 4.2;  // Max battery voltage
+  // Uncomment gamma parts for battery percentage curves
+  const int voltagePin = A10;
+  const float Vref = 3.3;  // Can read voltage of 3.3V rail with voltage divider then divide by 1024. Should be 3.3V but could use 5V like arduino systems use
+  const float Vmax = 12.6;
+  const float Vmin = 9;
+
   // float gammaMax = 3.0;
   // float gammaMin = 0.5;
 
-  // int adcValue = analogRead(pin);
-  // float Vout = (adcValue / 1023.0) * Vref;  // Output voltage after voltage divider
-  // float Vbattery = Vout * (R1 + R2) / R2;  // Reversed voltage divider equation
+  int adcValue = 0;
+  float voltage = 0;
+  float batteryPercentage = 0;
 
-  // float gamma = gammaMin + (gammaMax - gammaMin) * (Vbattery - Vmin) / (Vmax - Vmin);
-  // float batteryPercentage = pow((Vbattery - Vmin) / (Vmax - Vmin), gamma) * 100;
+  adcValue = analogRead(voltagePin); // Voltage from 0 to boards
+  voltage = ((adcValue * Vref) / 1000) * 11;  // Divide by 1000 for Volts - * 11 for voltage divider
 
-  // if (batteryPercentage < 0) batteryPercentage = 0;
-  // if (batteryPercentage > 100) batteryPercentage = 100;
+  batteryPercentage = ((voltage - Vmin) / (Vmax - Vmin)) * 100;
 
-  // batteryPercent = batteryPercentage;
+  // float gamma = gammaMin + (gammaMax - gammaMin) * (batteryPercentage / 100);
+  // float trueBatteryPercentage = pow((batteryPercentage / 100), gamma) * 100;
+
+  batteryPercent = batteryPercentage; // trueBatteryPercentage  // Value will be float value between 0.00 and 100.00
 }
 
 void BluetoothControl::MyServerCallbacks::onConnect(BLEServer* pServer) {

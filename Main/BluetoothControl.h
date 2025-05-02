@@ -22,7 +22,7 @@ private:
   bool deviceConnected = false;
   bool isImageReceived = false;
 
-  uint8_t batteryPercent = 100;
+  float batteryPercent = 100;
 
   unsigned long startTime = 0;
 
